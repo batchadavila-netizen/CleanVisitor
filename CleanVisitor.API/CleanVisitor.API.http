@@ -1,0 +1,6 @@
+@CleanVisitor.API_HostAddress = http://localhost:5283
+
+GET {{CleanVisitor.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
