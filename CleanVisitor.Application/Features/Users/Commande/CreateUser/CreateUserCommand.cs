@@ -1,6 +1,7 @@
 using MediatR;
 using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Core.Enum.UserRole;
+using CleanVisitor.Core.Entities.User;
 namespace CleanVisitor.Application.Features.Users.Commande.CreateUser;
 public record CreateUserCommand : IRequest<UserDto>
 {

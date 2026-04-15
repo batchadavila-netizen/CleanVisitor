@@ -1,2 +1,3 @@
 using CleanVisitor.Core.Entities.User;
-public record AuthenticationResponse(User user, string Token);
+using CleanVisitor.Application.Features.Users.Dtos;
+public record AuthenticationResponse(UserDto user, string token, string Role);

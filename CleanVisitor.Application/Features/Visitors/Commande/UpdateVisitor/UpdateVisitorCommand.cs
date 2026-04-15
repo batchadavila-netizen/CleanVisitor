@@ -2,7 +2,7 @@ using MediatR;
 using CleanVisitor.Application.Features.Visitors.Dtos;
 using CleanVisitor.Core.Entities;
 namespace CleanVisitor.Application.Features.Visitors.Commande.UpdateVisitor;
-public record UpdateVisitorCommand:IRequest<Visitor>
+public record UpdateVisitorCommand:IRequest<VisitorDto>
 {
     public int Id{get;set;}
     public string Nom{get;set;}=string.Empty;

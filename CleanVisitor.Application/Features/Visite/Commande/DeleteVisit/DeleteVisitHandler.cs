@@ -4,7 +4,7 @@ using CleanVisitor.Application.Features.Visite.Interfaces;
 using CleanVisitor.Core.Entities.Visits;
 using CleanVisitor.Application.Features.Visite.Commande.DeleteVisit;
 namespace CleanVisitor.Application.Features.Visite.Commande.DeleteVisit.DeleteVisitHandler;
-public class DeleteVisitHandler:IRequestHandler<DeleteVisitCommand, Visit>
+public class DeleteVisitHandler:IRequestHandler<DeleteVisitCommand, bool>
 {
     private readonly IVisitRepository _repository;
     private readonly IMapper _mapper;
@@ -13,7 +13,7 @@ public class DeleteVisitHandler:IRequestHandler<DeleteVisitCommand, Visit>
         _repository=repository;
         _mapper=mapper;
     }
-    public async Task<Visit>Handle(DeleteVisitCommand request, CancellationToken cancellationToken)
+    public async Task<bool>Handle(DeleteVisitCommand request, CancellationToken cancellationToken)
     {
         var visit = await _repository.GetByIdAsync(request.Id);
         
@@ -21,6 +21,6 @@ public class DeleteVisitHandler:IRequestHandler<DeleteVisitCommand, Visit>
             throw new KeyNotFoundException("Visiteur non trouvé");
         await _repository.DeleteAsync(request.Id);
 
-        return _mapper.Map<Visit>(visit);
+        return true;
     }
 }

@@ -9,6 +9,11 @@ Task<VisitDto?>GetByDateAsync(DateTime Date);
     Task<VisitDto?> GetByIdAsync(int Id);
     Task<VisitDto> AddAsync(Visit visit);
     Task<VisitDto?> UpdateAsync(Visit visit);
-    Task<Visit?> DeleteAsync(int Id);
+    Task<bool> DeleteAsync(int Id);
+    Task<List<VisitDto>> GetDeletedAsync();
+    Task<VisitDto> GetDeletedByIdAsync(int id);
+    Task<int>RestoreAsync(int id);
     Task<List<ServiceDto>> GetVisitCountByServiceStatutAsync();
+    Task<bool> UpdateStatusAsync(int id, int newStatus);
+    Task<IEnumerable<VisitDetailsDto>> GetAllVisitsWithDetailsAsync();
     }

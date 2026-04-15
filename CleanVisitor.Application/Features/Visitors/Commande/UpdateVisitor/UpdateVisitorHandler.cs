@@ -4,7 +4,7 @@ using AutoMapper;
 using CleanVisitor.Application.Features.Visitors.Dtos;
 using CleanVisitor.Application.Features.Visitors.Interfaces;
 using CleanVisitor.Application.Features.Visitors.Commande.UpdateVisitor;
-public class UpdateVisitorHandler:IRequestHandler<UpdateVisitorCommand, Visitor?>
+public class UpdateVisitorHandler:IRequestHandler<UpdateVisitorCommand, VisitorDto?>
 {
     private readonly IVisitorRepository _repository;
     private readonly IMapper _mapper;
@@ -13,7 +13,7 @@ public class UpdateVisitorHandler:IRequestHandler<UpdateVisitorCommand, Visitor?
         _repository=repository;
         _mapper=mapper;
     }
-public async Task<Visitor?>Handle(UpdateVisitorCommand request, CancellationToken cancelationToken)
+public async Task<VisitorDto?>Handle(UpdateVisitorCommand request, CancellationToken cancelationToken)
     {
        await _repository.GetByIdAsync(request.Id);
        var visitor=_mapper.Map<Visitor>(request);

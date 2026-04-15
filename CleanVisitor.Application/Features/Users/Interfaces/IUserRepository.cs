@@ -4,9 +4,12 @@ namespace CleanVisitor.Application.Features.Users.Interfaces;
 public interface IUserRepository
 {
     Task<UserDto?> GetByIdAsync(int id);
-    Task<UserDto?> GetByEmailAsync(string email); 
+    Task<User> GetByEmailAsync(string email); 
     Task<List<UserDto>> GetAllAsync();
-    Task<UserDto?> AddAsync(User user);
+    Task<UserDto> AddAsync(User user);
     Task<UserDto?> UpdateAsync(User user);
-    Task<UserDto?> DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id);
+    Task<List<UserDto>> GetDeletedAsync();
+    Task<UserDto> GetDeletedByIdAsync(int id);
+    Task<int>RestoreAsync(int id);
 }

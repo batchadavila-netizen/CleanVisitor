@@ -11,5 +11,8 @@ public class Visit
     public TimeSpan HeureDepart{get; set;}
     public VisitStatut Statut{get;set;}
     public ServiceVisitor Service{get;set;}
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
+
 
 }

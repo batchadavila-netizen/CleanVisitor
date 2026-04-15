@@ -16,9 +16,9 @@ public class CreateVisitorValidator : AbstractValidator<CreateVisitorCommand>
         .EmailAddress().WithMessage("L'Email doit toujours contenir un @")
         .MaximumLength(20).WithMessage("Ne doit pas depasser 20 Caractere");
 
-        RuleFor(t=>t.Telephone)
-        .NotNull().WithMessage("Ne doit Pas etre Null")
-        .Matches(@"1\+[1-9]\d\d{7,14}$").WithMessage("Numero de telephone Invalide");
-
+        RuleFor(t => t.Telephone)
+       .NotNull().WithMessage("Ne doit Pas etre Null")
+       .Matches(@"^\+237[62]\d{8}$") 
+       .WithMessage("Format invalide. Exemple attendu : +2376XXXXXXXX");
     }  
 }

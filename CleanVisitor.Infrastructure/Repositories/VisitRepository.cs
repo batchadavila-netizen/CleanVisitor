@@ -23,71 +23,73 @@ public class VisitRepository :IVisitRepository
     
        public async Task<VisitDto> AddAsync(Visit visit)
 {
+    // On enlève le SCOPE_IDENTITY car OUTPUT INSERTED fait déjà le travail
     var sql = @"
-        INSERT INTO Visit (Motif, Date, HeureDepart, HeureArriver, Statut, Service, IdVisitor) 
+        INSERT INTO Visit (Motif, Date, HeureDepart, HeureArriver, Statut, Service, IdVisitor, IsDeleted) 
         OUTPUT INSERTED.*
-        VALUES (@Motif, @Date, @HeureDepart, @HeureArriver, @Statut, @Service, @IdVisitor);
-        SELECT CAST(SCOPE_IDENTITY() as int);";
+        VALUES (@Motif, @Date, @HeureDepart, @HeureArriver, @Statut, @Service, @IdVisitor, 0);";
+        
     using (var connection = new SqlConnection(_connectionString))
     {
-         return await connection.QuerySingleAsync<VisitDto>(sql, visit);
+        return await connection.QuerySingleAsync<VisitDto>(sql, visit);
     }
+}
+
+public async Task<VisitDto?> UpdateAsync(Visit visit)
+{
+    using var connection = new SqlConnection(_connectionString);
+    // Correction de la virgule et du WHERE
+    string sql = @"UPDATE [Visit] 
+                   SET Motif=@Motif, Date=@Date, HeureDepart=@HeureDepart, 
+                       HeureArriver=@HeureArriver, Statut=@Statut, Service=@Service 
+                   WHERE Id=@Id;
+                   SELECT * FROM [Visit] WHERE Id=@Id;";
+                   
+    return await connection.QueryFirstOrDefaultAsync<VisitDto>(sql, visit);
 }
 
         public async Task<VisitDto?> GetByIdAsync(int id)
         {
 
-                string sql = @"SELECT 
-                [Id], 
-                [Motif], 
-                [Date], 
-                CAST([HeureDepart] AS TIME) AS HeureDepart, 
-                CAST([HeureArriver] AS TIME) AS HeureArriver, 
-                [Statut],
-                [Service]
+                string sql = @"SELECT *
                FROM [Visit] 
-               WHERE [Id] = @Id";
+               WHERE [Id] = @Id AND IsDeleted=0";
                 using (var connection = new SqlConnection(_connectionString))
                 
                 return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, new { Id = id });
             }
-        
        public async Task<List<VisitDto?>> GetAllAsync()
 {
-    var sql = @"SELECT Motif As Motif, Date As Date, HeureDepart As HeureDepart, HeureArriver As HeureArriver, Statut As Statut, Service As Service
-     FROM [Visit]";
+    var sql = @"SELECT *
+     FROM [Visit]
+     WHERE IsDeleted=0";
     using var connection = new SqlConnection(_connectionString);
     var visit= await connection.QueryAsync<VisitDto?>(sql);
     return visit.ToList();
 
 }
-
-       public async Task<Visit?> DeleteAsync(int id)
+      public async Task<bool> DeleteAsync(int id)
 {
-    const string sql = @"DELETE FROM Visit WHERE Id = @Id";
-
     using var connection = new SqlConnection(_connectionString);
-    
-     return await connection.QueryFirstOrDefaultAsync<Visit?>(sql, new { Id = id });
-     }
+    {
+        // 1. On fait le Soft Delete
+        var sql = @"UPDATE [Visit] SET IsDeleted = 1, DeletedAt = GETDATE() WHERE Id = @Id";
+        await connection.ExecuteAsync(sql, new { Id = id });
+
+        // 2. On récupère l'utilisateur mis à jour pour le renvoyer
+        var sqlSelect = "SELECT * FROM [Visit] WHERE Id = @Id";
+         await connection.QueryFirstOrDefaultAsync<bool>(sqlSelect, new { Id = id });
+         return true;
+    }
+}
 
      public async Task<VisitDto?>GetByDateAsync(DateTime Date)
     {
         using var connection = new SqlConnection(_connectionString);
-        string sql=@"SELECT Motif, Date, HeureDepart, HeureArriver, Statut, Service
+        string sql=@"SELECT *
         FROM Visit
         WHERE Date=@Date;";
         return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, new{Date=Date});
-    }
-    
-    public async Task<VisitDto?>UpdateAsync(Visit visit)
-    {
-        using var connection = new SqlConnection(_connectionString);
-        {
-            string sql= @"UPDATE [Visit] SET Motif=@Motif, Date=@Date, HeureDepart=@HeureDepart, HeureArriver=@HeureArriver, Statut=@Statut, Service=@Service, Id  WHERE Id=@Id";
-            return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, visit);
-            
-        }
     }
     public async Task<List<ServiceDto>>GetVisitCountByServiceStatutAsync()
         {
@@ -101,5 +103,63 @@ public class VisitRepository :IVisitRepository
             return service.ToList();
         }
         }
+        public async Task<List<VisitDto>> GetDeletedAsync()
+         {
+            var sql = @"SELECT * FROM [Visit]
+                    WHERE IsDeleted = 1";
+                    using var connection = new SqlConnection(_connectionString);
 
+            var user= await connection.QueryAsync<VisitDto>(sql);
+                        return user.ToList(); 
+         }
+public async Task<int> RestoreAsync(int id)
+        {
+          var sql = @"UPDATE [Visit]
+            SET IsDeleted = 0,
+            DeletedAt = NULL
+            OUTPUT inserted.*
+            WHERE Id = @Id AND IsDeleted=1";
+        using var connection = new SqlConnection(_connectionString);
+     return await connection.QueryFirstOrDefaultAsync<int>(sql, new { Id = id });
+        }
+        public async Task<VisitDto?> GetDeletedByIdAsync(int id)
+    {
+
+        // Requête SQL brute (Sécurisée contre les injections grâce aux paramètres @id)
+        string sql = "SELECT * FROM Visit WHERE Id = @id AND IsDeleted = 1";
+             using var connection = new SqlConnection(_connectionString);
+
+        // Dapper mappe automatiquement les colonnes vers les propriétés de l'objet User
+        return await connection.QueryFirstOrDefaultAsync<VisitDto>(sql, new { id });
+    }
+    public async Task<bool> UpdateStatusAsync(int id, int newStatus)
+{
+    // On met à jour le statut (1=En attente, 2=Terminé/Validé, 3=Annulé)
+    const string sql = @"UPDATE [Visit] SET Statut = @Statut WHERE Id = @Id";
+    
+    using var connection = new SqlConnection(_connectionString);
+    var rowsAffected = await connection.ExecuteAsync(sql, new { Statut = newStatus, Id = id });
+    
+    return rowsAffected > 0;
+}
+// Dans VisitRepository.cs
+public async Task<IEnumerable<VisitDetailsDto>> GetAllVisitsWithDetailsAsync()
+{
+    using var connection = new SqlConnection(_connectionString);
+    var sql = @"
+        SELECT 
+            v.Id, 
+            v.Motif, 
+            v.Service, 
+            v.Statut, 
+            v.HeureArriver, 
+            v.IdVisitor,
+            vt.Nom, 
+            vt.Email 
+        FROM Visites v 
+        INNER JOIN Visiteurs vt ON v.IdVisitor = vt.Id
+        WHERE v.IsDeleted = 0";
+
+    return await connection.QueryAsync<VisitDetailsDto>(sql);
+}
     }

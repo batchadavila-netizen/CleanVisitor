@@ -5,7 +5,7 @@ using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Application.Features.Users.Interfaces;
 using CleanVisitor.Application.Features.Users.Commande.DeleteUser.DeleteUserCommand;
 namespace CleanVisitor.Application.Feautures.Users.Commande.CommandHandler.DeleteUserHandler;
-public class DeleteUserHandler:IRequestHandler<DeleteUserCommand, UserDto>
+public class DeleteUserHandler:IRequestHandler<DeleteUserCommand, bool>
 {
     private readonly IUserRepository _repository;
     private readonly IMapper _mapper;
@@ -14,9 +14,10 @@ public class DeleteUserHandler:IRequestHandler<DeleteUserCommand, UserDto>
         _repository=repository;
         _mapper=mapper;
     }
-    public async Task<UserDto>Handle(DeleteUserCommand request, CancellationToken cancellationToken)
+    public async Task<bool>Handle(DeleteUserCommand request, CancellationToken cancellationToken)
     {
         var user=_mapper.Map<User>(request);
-        return await _repository.DeleteAsync(user.Id);
+         await _repository.DeleteAsync(user.Id);
+         return true; 
     }
 }

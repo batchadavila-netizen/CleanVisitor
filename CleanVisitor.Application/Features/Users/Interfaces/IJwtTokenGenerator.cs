@@ -1,7 +1,8 @@
 using CleanVisitor.Core.Entities.User;
 using CleanVisitor.Core.Enum. UserRole;
+using CleanVisitor.Application.Features.Users.Dtos;
 namespace CleanVisitor.Application.Features.Users.Interfaces.IJwtTokenGenerator;
 public interface IJwtTokenGenerator
 {
-string GenerateToken( string Nom, string Prenom, string Email, UserRole Role, bool IsActive, DateTime CreatedAt);
+string GenerateToken(User user );
 }

@@ -4,7 +4,7 @@ using Dapper;
 using CleanVisitor.Core.Entities.User;
 using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Application.Features.Users.Interfaces;
-namespace CleanVisitor.Infrastructure.Repositories;
+namespace CleanVisitor.Infrastructure.Repositories.UserRepository;
 public class UserRepository : IUserRepository
 {
     private readonly string _connectionString;
@@ -12,25 +12,26 @@ public class UserRepository : IUserRepository
     {
         _connectionString=configuration.GetConnectionString("DefaultConnection")!;
     }
-    public async Task<UserDto?>AddAsync(User user)
+    public async Task<UserDto>AddAsync(User user)
     {
-        var sql=@"INSERT INTO [User] (Nom, Prenom, Email, PasswordHash, Role, IsActive, CreatedAt)
-        VALUES (@Nom, @Prenom, @Email, @PasswordHash, @Role, @IsActive, @CreatedAt);
+        var sql=@"INSERT INTO [User] (Nom, Prenom, Email, PasswordHash, IsActive, CreatedAt, Role)
+        VALUES (@Nom, @Prenom, @Email, @PasswordHash, @IsActive, @CreatedAt, @Role);
         SELECT CAST(SCOPE_IDENTITY() AS int);";
         using var connection= new SqlConnection(_connectionString);
         return await connection.QuerySingleAsync<UserDto>(sql, user);
     }
-    public async Task<UserDto?> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id)
 {
     using var connection = new SqlConnection(_connectionString);
     {
         // 1. On fait le Soft Delete
-        var sql = "UPDATE [User] SET IsDeleted = 1, DeletedAt = GETDATE() WHERE Id = @Id AND IsDeleted = 0";
+        var sql = @"UPDATE [User] SET IsDeleted = 1, DeletedAt = GETDATE() WHERE Id = @Id";
         await connection.ExecuteAsync(sql, new { Id = id });
 
         // 2. On récupère l'utilisateur mis à jour pour le renvoyer
         var sqlSelect = "SELECT * FROM [User] WHERE Id = @Id";
-        return await connection.QueryFirstOrDefaultAsync<UserDto>(sqlSelect, new { Id = id });
+         await connection.QueryFirstOrDefaultAsync<bool>(sqlSelect, new { Id = id });
+         return true;
     }
 }
         
@@ -52,15 +53,7 @@ public class UserRepository : IUserRepository
     }
     public async Task<List<UserDto>> GetAllAsync()
     {
-        var sql=@"SELECT 
-        Nom AS Nom, 
-        Prenom AS Prenom, 
-        Email AS Email, 
-        Role AS Role, 
-        IsActive AS IsActive, 
-        CreatedAt AS CreatedAt,
-        PasswordHash AS PasswordHash
-        FROM [User]
+        var sql=@"SELECT * FROM[User]
         WHERE IsDeleted=0";
         using var connection=new SqlConnection(_connectionString);
 var user = await connection.QueryAsync<UserDto>(sql);
@@ -68,18 +61,49 @@ return user.ToList();
     }
     public async Task<UserDto?>GetByIdAsync(int id)
     {
-        var sql=@"SELECT Id, Nom, Prenom, Email, PasswordHash, Role, IsActive, CreatedAt
+        var sql=@"SELECT *
         FROM [User]
         WHERE Id=@Id AND IsDeleted=0";
         using var connection=new SqlConnection(_connectionString);
         return await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new {Id=id});
     }
-    public async Task<UserDto?>GetByEmailAsync(string email)
+    public async Task<User?> GetByEmailAsync(string email)
+        {
+
+                string sql = @"SELECT * FROM [User] WHERE [Email] = @Email AND IsDeleted=0";
+                using (var connection = new SqlConnection(_connectionString))
+                
+                return await connection.QueryFirstOrDefaultAsync<User?>(sql, new { email});
+            }
+            public async Task<List<UserDto>> GetDeletedAsync()
+         {
+            var sql = @"SELECT * FROM [User]
+                    WHERE IsDeleted = 1";
+                    using var connection = new SqlConnection(_connectionString);
+
+            var user= await connection.QueryAsync<UserDto>(sql);
+                        return user.ToList(); 
+         }
+         public async Task<int> RestoreAsync(int id)
+        {
+          var sql = @"UPDATE [User]
+            SET IsDeleted = 0,
+            DeletedAt = NULL
+            OUTPUT inserted.*
+            WHERE Id = @Id AND IsDeleted=1";
+        using var connection = new SqlConnection(_connectionString);
+     return await connection.QueryFirstOrDefaultAsync<int>(sql, new { Id = id });
+        }
+        public async Task<UserDto?> GetDeletedByIdAsync(int id)
     {
-        var sql=@"SELECT Id AS Id, Nom AS Nom, Prenom AS Prenom, Email AS Email, PasswordHash AS PasswordHash, Role As Role, IsActive AS IsActive, CreatedAt AS CreatedAt
-        FROM [User]
-        WHERE Email=@Email";
-        using var connection=new SqlConnection(_connectionString);
-        return await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new{Email=email});
+
+        // Requête SQL brute (Sécurisée contre les injections grâce aux paramètres @id)
+        string sql = @"SELECT * 
+                FROM [User] 
+                WHERE Id = @Id AND IsDeleted = 1";
+             using var connection = new SqlConnection(_connectionString);
+
+        // Dapper mappe automatiquement les colonnes vers les propriétés de l'objet User
+        return await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new { id });
     }
 }

@@ -1,7 +1,7 @@
 using MediatR;
 using AutoMapper;
 using CleanVisitor.Core.Entities.User;
-using CleanVisitor.Application.Features.Users.Dtos.UserRegistrationDto;
+using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Application.Features.Users.Interfaces.IJwtTokenGenerator;
 using CleanVisitor.Application.Features.Users.Interfaces;
 using CleanVisitor.Application.Features.Users.Commande.RegistreUser;
@@ -21,10 +21,14 @@ public class RegisterUserHandler:IRequestHandler<RegisterUserCommand, Authentica
     {
         var user = _mapper.Map<User>(request);
          await _repository.AddAsync(user);
+         string roleName = user.Role.ToString();
 
         // 2. Génération du jeton via ton interface
-        var token = _jwtTokenGenerator.GenerateToken( user.Nom, user.Prenom, user.Email, user.Role, user.IsActive, user.CreatedAt);
+        var userDto=_mapper.Map<UserDto>(user);
+        var token =_jwtTokenGenerator.GenerateToken(user);
+          
+       
 
-        return new AuthenticationResponse(user, token);
+        return new AuthenticationResponse(userDto, token, roleName);
     }
 }

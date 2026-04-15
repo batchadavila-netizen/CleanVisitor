@@ -11,7 +11,9 @@ using CleanVisitor.Application.Features.Visitors.Querries.GetVisitorVisit;
 using CleanVisitor.Application.Features.Visitors.Querries.GetVisitorJour;
 using CleanVisitor.Application.Features.Visitors.Querries.GetVisitorAnnee;
 using CleanVisitor.Application.Features.Visitors.Querries.GetVisitorMois;
-
+using CleanVisitor.Application.Features.Visitors.Commande.RestoreUser;
+using CleanVisitor.Application.Features.Visitors.Querries.GetDeleteByIdVisitor.GetDeleteByIdVisitorQuery;
+using CleanVisitor.Application.Features.Visitors.Querries.GetDeleteVisitor;
 
 namespace CleanVisitor.Api.Controllers;
    [ApiController]
@@ -79,17 +81,37 @@ public async Task<IActionResult>GetVisitorVisit([FromRoute]int id)
        return NotFound("Visitors non trouver.");
        return NoContent();
     }
-    [HttpPut("{id}")]
+    [HttpPut]
 
-public async Task<IActionResult> Update(int id, [FromBody] UpdateVisitorCommand command)
+public async Task<IActionResult> Update( [FromBody] UpdateVisitorCommand command)
 {
-    if (id != command.Id) 
-    {
-        return BadRequest("L'ID de l'URL ne correspond pas à l'ID du corps de la requête.");
-    }
 
     await _mediator.Send(command);
     return NoContent();
 }
+ [HttpGet("deleted")]
+public async Task<IActionResult> GetDeletedAsync()
+    {
+        // Nécessite une nouvelle Query : GetAllDeletedUsersQuery
+        var users = await _mediator.Send(new GetDeletedVisitorQuery());
+        return Ok(users);
     }
+
+    [HttpGet("deleted/{id:int}")]
+    public async Task<IActionResult> GetDeletedByIdAsync(int id)
+    {
+        // Nécessite une nouvelle Query : GetDeletedUserByIdQuery
+        var user = await _mediator.Send(new GetDeletedByIdVisitorQuery(id));
+        if (user == null) return NotFound();
+        return Ok(user);
+    }
+
+    [HttpPost("restore/{id:int}")]
+    public async Task<IActionResult> RestoreAsync(int id)
+    {
+        // Nécessite une nouvelle Commande : RestoreUserCommand
+        var result = await _mediator.Send(new RestoreVisitorCommand(id));
+        return Ok(new { RestoredId = result });
+    }
+}
   

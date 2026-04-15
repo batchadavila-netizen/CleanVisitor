@@ -21,7 +21,7 @@ public class GetVisitorByIdHandler: IRequestHandler<GetVisitorByIdQuery, Visitor
     var visitor = await _repository.GetByIdAsync(request.Id);
 
     if (visitor == null) {
-        Console.WriteLine("---> DEBUG: Le Repository a renvoyé NULL");
+        Console.WriteLine(" Visiteur non trouver");
         return null;
     }
 

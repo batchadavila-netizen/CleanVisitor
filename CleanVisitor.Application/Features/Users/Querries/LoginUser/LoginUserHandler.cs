@@ -17,13 +17,20 @@ public class LoginUserHandler:IRequestHandler<LoginUserQuery, AuthenticationResp
         _mapper=mapper;
         _jwtTokenGenerator=jwtTokenGenerator;
     }
-    public async Task<AuthenticationResponse>Handle(LoginUserQuery request, CancellationToken cancellationToken)
-    {
-        var user=await _repository.GetByEmailAsync(request.Email);
-        var userDto= _mapper.Map<User>(user);
-       var token = _jwtTokenGenerator.GenerateToken(user.Nom, user.Prenom, user.Email, user.Role, user.IsActive, user.CreatedAt);
+    public async Task<AuthenticationResponse> Handle(LoginUserQuery request, CancellationToken cancellationToken)
+{
+    var user = await _repository.GetByEmailAsync(request.Email);
 
-        return new AuthenticationResponse(userDto, token);
-   
-    }
+    if (user == null)
+        throw new Exception("Identifiants incorrects");
+
+    string roleName = user.Role.ToString();
+
+    var token = _jwtTokenGenerator.GenerateToken(user);
+
+
+    var userDto = _mapper.Map<UserDto>(user);
+
+    return new AuthenticationResponse(userDto, token, roleName);
+}
 }

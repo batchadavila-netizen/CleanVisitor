@@ -20,7 +20,7 @@ public async Task<VisitDto?>Handle(GetVisitByIdQuery request, CancellationToken 
     var visit = await _repository.GetByIdAsync(request.Id);
 
     if (visit == null) {
-        Console.WriteLine("---> DEBUG: Le Repository a renvoyé NULL");
+        Console.WriteLine("Visite non trouver");
         return null;
     }
 

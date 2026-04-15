@@ -8,6 +8,5 @@ public record CreateVisitorCommand:IRequest<VisitorDto?>
     public string Telephone{get;set;}=string.Empty;
     public String Email{get; set;}=string.Empty;
     public DateTime DateEnregistrement{get;set;}
-    public DateTime DateCreation{get;set;}
 
 }

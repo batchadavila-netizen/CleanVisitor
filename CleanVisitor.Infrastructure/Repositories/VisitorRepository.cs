@@ -42,7 +42,7 @@ public class VisitorRepository :IVisitorRepository
         public async Task<Visitor?> GetByIdAsync(int id)
         {
 
-                string sql = @"SELECT * FROM [Visitors] WHERE [Id] = @Id";
+                string sql = @"SELECT * FROM [Visitors] WHERE [Id] = @Id AND IsDeleted=0";
                 using (var connection = new SqlConnection(_connectionString))
                 
                 return await connection.QueryFirstOrDefaultAsync<Visitor?>(sql, new { Id = id });
@@ -50,28 +50,37 @@ public class VisitorRepository :IVisitorRepository
         
        public async Task<List<Visitor>> GetAllAsync()
 {
-    var sql = @"SELECT* FROM Visitors";
+    var sql = @"SELECT * FROM [Visitors]
+    WHERE IsDeleted=0";
     using var connection = new SqlConnection(_connectionString);
     var visitor= await connection.QueryAsync<Visitor>(sql);
     return visitor.ToList();
 
 }
 
-       public async Task<Visitor?> DeleteAsync(int id)
+       public async Task<bool> DeleteAsync(int id)
 {
-    const string sql = @"DELETE FROM Visitors WHERE Id = @Id";
-
     using var connection = new SqlConnection(_connectionString);
+    // Pas besoin d'accolades supplémentaires après 'using var' en C# moderne
     
-     return await connection.QueryFirstOrDefaultAsync<Visitor?>(sql, new { Id = id });
+    // 1. On exécute l'UPDATE pour le Soft Delete
+    var sql = @"UPDATE [Visitors] 
+                SET IsDeleted = 1, 
+                    DeletedAt = GETDATE() 
+                WHERE Id = @Id";
     
+    // On récupère le nombre de lignes modifiées
+    var rowsAffected = await connection.ExecuteAsync(sql, new { Id = id });
+
+    // 2. On retourne true si au moins une ligne a été mise à jour
+    return rowsAffected > 0;
 }
-    public async Task<Visitor?>UpdateAsync(Visitor visitor)
+    public async Task<VisitorDto?>UpdateAsync(Visitor visitor)
     {
         using var connection = new SqlConnection(_connectionString);
         {
             string sql= @"UPDATE VISITORS SET Nom=@Nom, Telephone=@Telephone, Email=@Email,  WHERE Id=@Id";
-            return await connection.QueryFirstOrDefaultAsync<Visitor?>(sql, visitor);
+            return await connection.QueryFirstOrDefaultAsync<VisitorDto?>(sql, visitor);
             
         }
     }
@@ -145,4 +154,33 @@ public class VisitorRepository :IVisitorRepository
             return stat.ToList();
         }
     }
-}
+        public async Task<List<VisitorDto>> GetDeletedAsync()
+         {
+            var sql = @"SELECT * FROM [Visitors]
+                    WHERE IsDeleted = 1";
+                    using var connection = new SqlConnection(_connectionString);
+
+            var visitors= await connection.QueryAsync<VisitorDto>(sql);
+                        return visitors.ToList(); 
+         }
+public async Task<int> RestoreAsync(int id)
+        {
+          var sql = @"UPDATE [Visitors]
+            SET IsDeleted = 0,
+            DeletedAt = NULL
+            OUTPUT inserted.*
+            WHERE Id = @Id AND IsDeleted=1";
+        using var connection = new SqlConnection(_connectionString);
+     return await connection.QueryFirstOrDefaultAsync<int>(sql, new { Id = id });
+        }
+        public async Task<VisitorDto?> GetDeletedByIdAsync(int id)
+    {
+
+        // Requête SQL brute (Sécurisée contre les injections grâce aux paramètres @id)
+        string sql = "SELECT * FROM Visitors WHERE Id = @id AND IsDeleted = 1";
+             using var connection = new SqlConnection(_connectionString);
+
+        // Dapper mappe automatiquement les colonnes vers les propriétés de l'objet User
+        return await connection.QueryFirstOrDefaultAsync<VisitorDto>(sql, new { id });
+    }
+    }

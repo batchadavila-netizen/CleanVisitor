@@ -20,5 +20,6 @@ public class CreateUserHandler:IRequestHandler<CreateUserCommand, UserDto>
         var user=_mapper.Map<User>(request);
          await _repository.AddAsync(user);
          return _mapper.Map<UserDto>(user);
+         
     }
 }

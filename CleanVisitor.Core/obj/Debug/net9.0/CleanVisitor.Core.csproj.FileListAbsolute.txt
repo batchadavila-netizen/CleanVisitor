@@ -1,0 +1,12 @@
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\bin\Debug\net9.0\CleanVisitor.Core.deps.json
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\bin\Debug\net9.0\CleanVisitor.Core.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\bin\Debug\net9.0\CleanVisitor.Core.pdb
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\CleanVisitor.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\CleanVisitor.Core.AssemblyInfoInputs.cache
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\CleanVisitor.Core.AssemblyInfo.cs
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\CleanVisitor.Core.csproj.CoreCompileInputs.cache
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\CleanVisitor.Core.sourcelink.json
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\CleanVisitor.Core.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\refint\CleanVisitor.Core.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\CleanVisitor.Core.pdb
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Core\obj\Debug\net9.0\ref\CleanVisitor.Core.dll
