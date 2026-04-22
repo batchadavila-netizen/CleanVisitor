@@ -84,38 +84,46 @@ public class VisitorRepository :IVisitorRepository
             
         }
     }
- public  async Task<VisitorVisitDto?>GetVisitorVisitAsync(int Id)
-    {
-        using var connection=new SqlConnection(_connectionString);
-        {
-            VisitorVisitDto? visitorDto = null;
-            
-       var sql = @"SELECT vi.Nom, vi.Telephone, vi.Email, vi.DateEnregistrement, 
+public async Task<VisitorVisitDto?> GetVisitorVisitAsync(int Id)
+{
+    using var connection = new SqlConnection(_connectionString);
+    
+    // On garde une trace du visiteur unique
+    VisitorVisitDto? visitorDto = null;
+
+    var sql = @"
+        SELECT 
+            vi.Nom, vi.Telephone, vi.Email, vi.DateEnregistrement, 
             v.Motif, v.Date, v.HeureDepart, v.HeureArriver, v.Statut, v.Service
-            FROM Visitors vi
-            INNER JOIN Visit v ON vi.Id = v.IdVisitor
-            WHERE vi.Id = @Id";
-        
-        await connection.QueryAsync<VisitorVisitDto, VisitClonDto, VisitorVisitDto?>(
+        FROM Visitors vi
+        INNER JOIN Visit v ON vi.Id = v.IdVisitor
+        WHERE vi.Id = @Id AND v.IsDeleted = 0"; // On n'oublie pas le IsDeleted
+
+    await connection.QueryAsync<VisitorVisitDto, VisitClonDto, VisitorVisitDto>(
         sql,
-        (visitorVisit, visitClon) => {
-            if (visitorDto == null) {
-                visitorDto = visitorVisit;
+        (visitor, visit) => 
+        {
+            // Initialisation du parent au premier passage
+            if (visitorDto == null) 
+            {
+                visitorDto = visitor;
                 visitorDto.ListVisitClon = new List<VisitClonDto>();
             }
-            if (visitClon != null) {
-                visitorDto.ListVisitClon.Add(visitClon);
-                return null;
+            
+            // Ajout de la visite à la liste du parent
+            if (visit != null) 
+            {
+                visitorDto.ListVisitClon.Add(visit);
             }
-            return visitorVisit;
+            
+            return visitor; // Dapper attend un retour, mais on utilise surtout visitorDto
         },
         new { Id = Id },
-        splitOn: "Motif" // On dit à Dapper : "À partir de la colonne Motif, c'est la table Visit"
+        splitOn: "Motif" 
     );
 
     return visitorDto;
 }
-        }
         public async Task<List<StatJourDto>> GetVisitorJourAsync()
     {
         using var connection= new SqlConnection(_connectionString);

@@ -13,6 +13,4 @@ public class Visit
     public ServiceVisitor Service{get;set;}
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
-
-
 }

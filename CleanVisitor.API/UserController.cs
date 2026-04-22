@@ -13,6 +13,7 @@ using CleanVisitor.Application.Features.Users.Querries.GetByIdUser.GetByIdUserQu
 using CleanVisitor.Application.Features.Users.Commande.RestoreUser;
 using CleanVisitor.Application.Features.Users.Querries.GetDeleteByIdUser.GetDeleteByIdUserQuery;
 using CleanVisitor.Application.Features.Users.Querries.GetDeleteUser;
+using CleanVisitor.Application.Features.Users.Queries.GetUserProfile;
 // [Authorize]
 [ApiController]
 [Route("api/[controller]")]
@@ -104,4 +105,11 @@ public async Task<IActionResult> GetDeletedByIdAsync([FromRoute] int id)
         var result = await _mediator.Send(new RestoreUserCommand(id));
         return Ok(new { RestoredId = result });
     }
+    [HttpGet("profile/{id}")]
+public async Task<IActionResult> GetProfile(int id)
+{
+    var query = new GetUserProfileQuery { UserId = id };
+    var result = await _mediator.Send(query);
+    return Ok(result);
+}
 }

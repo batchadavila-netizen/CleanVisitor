@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using CleanVisitor.Api.Hubs;
+using CleanVisitor.Api.Services;
 using System.Text;
 using System.Text.Json.Serialization;
 using CleanVisitor.Application.Features.Visitors.Interfaces;
@@ -15,20 +17,38 @@ using CleanVisitor.Application.Features.Users.Interfaces.IJwtTokenGenerator;
 using CleanVisitor.Application.DependencecyInjection;
 using CleanVisitor.Infrastructure.AuthService.JwtTokenGenerator;
 using CleanVisitor.Infrastructure.Repositories.UserRepository;
+using CleanVisitor.Application.Features.Visite.Commande.EmailSetting;
+using CleanVisitor.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers + Swagger
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-// 1. Récupération de la clé depuis builder.Configuration
-var jwtKey = builder.Configuration["Jwt:Key"];
+// --- 1. SERVICES DE BASE ---
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    });
 
-if (string.IsNullOrEmpty(jwtKey))
+builder.Services.AddEndpointsApiExplorer();
+
+// --- 2. CONFIGURATION CORS (UNE SEULE FOIS) ---
+builder.Services.AddCors(options =>
 {
-    throw new Exception("Jwt:Key est null ou vide dans appsettings.json");
-}
+    options.AddPolicy("CleanVisitorPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") // Ton frontend React
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Obligatoire pour SignalR
+    });
+});
+
+builder.Services.AddSignalR();
+
+// --- 3. AUTHENTIFICATION JWT ---
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrEmpty(jwtKey)) throw new Exception("Jwt:Key manquante dans appsettings.json");
 
 builder.Services.AddAuthentication(options => {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -42,8 +62,6 @@ builder.Services.AddAuthentication(options => {
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-
-        // On utilise builder.Configuration pour être raccord avec le générateur
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
@@ -52,21 +70,10 @@ builder.Services.AddAuthentication(options => {
 
 builder.Services.AddAuthorization();
 
-// AutoMapper
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
-builder.Services.AddAutoMapper(typeof(MapperVisit));
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.Converters.Add(
-            new JsonStringEnumConverter());
-    });
-
-
-   builder.Services.AddSwaggerGen(options =>
+// --- 4. SWAGGER ---
+builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "API Title", Version = "v1" });
-
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "CleanVisitor API", Version = "v1" });
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -74,86 +81,60 @@ builder.Services.AddControllers()
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Entrez 'Bearer' [espace] et votre token"
+        Description = "Entrez votre token JWT"
     });
-    
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
+            new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
             new string[] {}
         }
     });
 });
 
-
-// Assure-toi d'injecter IConfiguration dans le constructeur de ton service
-
-
-// MediatR
-builder.Services.AddMediatR(cfg=>
-{
-  cfg.RegisterServicesFromAssembly(typeof(CleanVisitor.Application.Features.Users.Querries.GetAllUser.GetAllUserQuery).Assembly);  
-});
-builder.Services.AddMediatR(cfg => {
-    cfg.RegisterServicesFromAssembly(typeof(CleanVisitor.Application.Features.Visitors.Querries.GetAllVisitor.GetAllVisitorQuery).Assembly);
-});
-builder.Services.AddMediatR(cfg => {
-    cfg.RegisterServicesFromAssembly(typeof(CleanVisitor.Application.Features.Visite.Querries.GetAllVisit.GetAllVisitQuery).Assembly);
-});
-
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        // Empêche les boucles infinies lors de la lecture des entités liées
-        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    });
-
-// DbContext, repository et service
+// --- 5. DEPENDENCY INJECTION ---
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddApplication();
+builder.Services.AddMediatR(cfg => {
+    cfg.RegisterServicesFromAssemblies(
+        typeof(CleanVisitor.Application.Features.Users.Querries.GetAllUser.GetAllUserQuery).Assembly,
+        typeof(CleanVisitor.Application.Features.Visitors.Querries.GetAllVisitor.GetAllVisitorQuery).Assembly,
+        typeof(CleanVisitor.Application.Features.Visite.Querries.GetAllVisit.GetAllVisitQuery).Assembly
+    );
+});
+
 builder.Services.AddScoped<IVisitorRepository, VisitorRepository>();
 builder.Services.AddScoped<IVisitRepository, VisitRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-// Dans Program.cs
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
-
+builder.Services.AddScoped<IVisitNotificationService, VisitNotificationService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
-// Dans Program.cs (C#)
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowReact", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173") // L'URL de ton Vite/React
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
+// Ajoute cette ligne pour l'Email
+builder.Services.Configure<EmailCommande>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 var app = builder.Build();
 
-// Pipeline
+// --- 6. PIPELINE MIDDLEWARE (L'ORDRE EST CRUCIAL) ---
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseCors();
-app.UseHttpsRedirection();
+// 1. CORS en premier
+app.UseCors("CleanVisitorPolicy");
+
+// 2. Routing
+app.UseRouting();
+
+// 3. Auth
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
 
-app.UseCors(policy => policy
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+// 4. Endpoints
+app.MapControllers();
+app.MapHub<VisitHub>("/visitHub");
 
 app.Run();

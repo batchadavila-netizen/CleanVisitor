@@ -1,40 +1,44 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { visitorService } from '../services/visitorService';
+import CreateVisitModal from '../components/CreateVisitModal'; // Assure-toi que le chemin est correct
+
 
 const VisitorsList = () => {
-  // États de l'interface
+  // --- ÉTATS DE L'INTERFACE ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
+  const navigate = useNavigate();
   
-  // États des données
+  
+  // --- ÉTATS DES DONNÉES ---
   const [visitors, setVisitors] = useState([]);
+  const [selectedVisitor, setSelectedVisitor] = useState(null); // Pour stocker le visiteur choisi
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
+  
 
-  // --- CHARGEMENT DES DONNÉES (VERSION FUSIONNÉE) ---
+  // --- CHARGEMENT DES DONNÉES ---
   const loadVisitors = async () => {
     try {
       setLoading(true);
-      
       let activeList = [];
       let deletedList = [];
 
-      // 1. Appel pour les actifs
       try {
         activeList = await visitorService.getAll();
       } catch (e) {
         console.error("Erreur sur les actifs :", e);
       }
 
-      // 2. Appel pour les supprimés
       try {
         deletedList = await visitorService.getDeleted();
       } catch (e) {
-        console.warn("Erreur sur la corbeille (Route peut-être introuvable) :", e);
+        console.warn("Erreur sur la corbeille :", e);
       }
 
-      // 3. Fusion sécurisée
       const fullList = [
         ...(Array.isArray(activeList) ? activeList : []).map(v => ({ ...v, isDeleted: false })),
         ...(Array.isArray(deletedList) ? deletedList : []).map(v => ({ ...v, isDeleted: true }))
@@ -53,11 +57,16 @@ const VisitorsList = () => {
   }, []);
 
   // --- ACTIONS ---
+  const handleOpenVisitModal = (visitor) => {
+    setSelectedVisitor(visitor); // On mémorise quel visiteur a été cliqué
+    setIsVisitModalOpen(true);    // On ouvre la modale
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm("Envoyer ce visiteur à la corbeille ?")) {
       try {
         await visitorService.delete(id);
-        await loadVisitors(); // Rechargera les deux listes
+        await loadVisitors();
       } catch (err) {
         alert("Erreur lors de la suppression");
       }
@@ -67,13 +76,13 @@ const VisitorsList = () => {
   const handleRestore = async (id) => {
     try {
       await visitorService.restore(id);
-      await loadVisitors(); // Rechargera les deux listes
+      await loadVisitors();
     } catch (err) {
       alert("Erreur lors de la restauration");
     }
   };
 
-  // --- LOGIQUE DE FILTRAGE ---
+  // --- FILTRAGE ---
   const filteredVisitors = visitors.filter(v => {
     const search = searchTerm.toLowerCase();
     const matchesSearch = 
@@ -81,9 +90,7 @@ const VisitorsList = () => {
       v.email?.toLowerCase().includes(search) ||
       v.telephone?.includes(search);
     
-    // On se base sur le flag isDeleted qu'on a ajouté lors de la fusion
     const matchesStatus = filterStatus === "active" ? !v.isDeleted : v.isDeleted;
-
     return matchesSearch && matchesStatus;
   });
 
@@ -94,23 +101,28 @@ const VisitorsList = () => {
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'} p-10`}>
         
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-black text-slate-800">Gestion des Visiteurs</h1>
-            <p className="text-slate-500 text-sm">Gestion des accès - Aigle Informatique</p>
-          </div>
-          <button className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
-            + Ajouter un visiteur
-          </button>
-        </div>
+    <div className="flex justify-between items-center mb-8">
+      <div>
+        <h1 className="text-2xl font-black text-slate-800">Gestion des Visiteurs</h1>
+        <p className="text-slate-500 text-sm">Gestion des accès - Aigle Informatique</p>
+      </div>
+      
+      {/* 3. Ajoute le onClick avec navigate */}
+     <button 
+  onClick={() => navigate('/Inscription')} // Majuscule ici pour correspondre à ta route
+  className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
+>
+  + Ajouter un visiteur
+</button>
+    </div>
 
-        {/* Barre de Recherche et Sélecteur de Statut */}
+        {/* Barre de Recherche et Sélecteur */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex gap-4 items-center">
           <div className="flex-1 relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
             <input 
               type="text" 
-              placeholder="Rechercher..." 
+              placeholder="Rechercher par nom, email ou téléphone..." 
               className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -161,6 +173,14 @@ const VisitorsList = () => {
                       <div className="flex justify-center gap-3">
                         {filterStatus === "active" ? (
                           <>
+                            {/* BOUTON CRÉER VISITE (📅) */}
+                            <button 
+                              onClick={() => handleOpenVisitModal(visitor)}
+                              className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors"
+                              title="Enregistrer une visite pour ce visiteur"
+                            >
+                              📅
+                            </button>
                             <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg">✏️</button>
                             <button onClick={() => handleDelete(visitor.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg">🗑️</button>
                           </>
@@ -186,6 +206,22 @@ const VisitorsList = () => {
             </div>
           )}
         </div>
+
+        {/* MODALE DE CRÉATION DE VISITE */}
+        {isVisitModalOpen && (
+          <CreateVisitModal 
+            onClose={() => setIsVisitModalOpen(false)} 
+            onSuccess={() => {
+              setIsVisitModalOpen(false);
+              // Optionnel : recharger une liste si nécessaire
+            }}
+            // On envoie les infos du visiteur à la modale
+            initialData={{ 
+              idVisitor: selectedVisitor?.id, 
+              nom: selectedVisitor?.nom 
+            }}
+          />
+        )}
       </main>
     </div>
   );

@@ -7,5 +7,6 @@ public record RegisterUserCommand:IRequest<AuthenticationResponse>{
     public string Email { get; set; } = string.Empty;
     public string ?PasswordHash { get; set; } 
     public UserRole Role { get; set; } 
+    public string ?Telephone { get; set; } // <--- AJOUT ICI
     
 }

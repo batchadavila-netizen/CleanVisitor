@@ -106,4 +106,32 @@ return user.ToList();
         // Dapper mappe automatiquement les colonnes vers les propriétés de l'objet User
         return await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new { id });
     }
+    public async Task<UserProfileDto> GetUserProfileAsync(int userId)
+{
+    const string sql = @"
+        SELECT 
+            u.Id, 
+            u.Nom, 
+            u.Prenom, 
+            u.Email, 
+            u.Role, -- Vérifier si c'est un Int ou String en base
+            v.Telephone 
+        FROM [User] u
+        LEFT JOIN Visitors v ON u.Email = v.Email
+        WHERE u.Id = @UserId";
+
+    try 
+    {
+        using var connection = new SqlConnection(_connectionString);
+        // Utiliser QuerySingleOrDefaultAsync pour éviter les erreurs si l'ID n'existe pas
+        var result = await connection.QueryFirstOrDefaultAsync<UserProfileDto>(sql, new { UserId = userId });
+        return result;
+    }
+    catch (Exception ex)
+    {
+        // Si ça plante ici, il verra l'erreur dans sa console
+        Console.WriteLine($"Erreur SQL: {ex.Message}");
+        throw; 
+    }
+}
 }

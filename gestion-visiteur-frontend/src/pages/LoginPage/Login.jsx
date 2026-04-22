@@ -11,47 +11,33 @@ const Login = () => {
 
   const handleLoginSubmit = async (email, password) => {
     setErrorMessage('');
-    console.log("1. Login.jsx : Tentative de connexion pour", email);
-
     try {
-      // 1. Appel au service d'authentification
-      const data = await authService.login(email, password); 
-      console.log("2. Login.jsx : Réponse brute de l'API ->", data);
-      
-// Dans handleLoginSubmit (Login.jsx)
-if (data) {
-  // 1. On récupère ce que l'API nous donne
-  const rawRole = data.role; // ex: "Visiteur"
-  const userEmail = email.toLowerCase();
+        const data = await authService.login(email, password); 
+        
+        if (data) {
+            const rawRole = data.role; // C'est le rôle transformé par ton authService (Admin, Agent ou Visiteur)
 
-  console.log("Analyse du rôle reçu :", rawRole);
+            console.log("Rôle final après traitement service :", rawRole);
 
-  // 2. LOGIQUE DE REDIRECTION INTELLIGENTE
-  // On force l'admin si le rôle est 'Admin', '1' 
-  // OU si c'est ton email de test (pour te débloquer)
-  if (rawRole === 'Admin' || rawRole === '1' || userEmail === 'batchadavila81@gmail.com') {
-    
-    console.log("🚀 Accès Admin accordé !");
-    localStorage.setItem('userRole', 'Admin'); // On stocke 'Admin' proprement
-    localStorage.setItem('token', data.token || 'bypass-token');
-    
-    navigate('/dashboard');
-  } 
-  else if (rawRole === 'Agent' || rawRole === '2') {
-    localStorage.setItem('userRole', 'Agent');
-    navigate('/visitors');
-  } 
-  else {
-    localStorage.setItem('userRole', 'Visiteur');
-    navigate('/my-visits');
-  }
-}
+            // 1. On stocke le rôle tel quel (il est déjà bien formaté par authService)
+            localStorage.setItem('userRole', rawRole);
+
+            // 2. REDIRECTION BASÉE UNIQUEMENT SUR LE RÔLE
+            if (rawRole === 'Admin') {
+                navigate('/dashboard');
+            } 
+            else if (rawRole === 'Agent') {
+                navigate('/visitors');
+            } 
+            else {
+                // Pour les Visiteurs (rôle 3)
+                navigate('/my-visits');
+            }
+        }
     } catch (err) {
-      console.error("ERREUR lors de la connexion :", err);
-      // On affiche un message plus précis si possible
-      setErrorMessage(err.message || "Identifiants incorrects ou serveur indisponible.");
+        setErrorMessage(err.message || "Identifiants incorrects.");
     }
-  };
+};
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">

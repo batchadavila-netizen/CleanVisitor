@@ -14,19 +14,28 @@ using CleanVisitor.Application.Features.Visite.Querries.GetDeleteByIdVisite.GetD
 using CleanVisitor.Application.Features.Visite.Querries.GetDeleteVisite;
 using CleanVisitor.Application.Features.Visite.Commande.UpdateVisitStatus;
 using CleanVisitor.Application.Features.Visite.Querries.GetVisitsWithDetails;
+using CleanVisitor.Application.Features.Visite.Querries.GetUserVisits;
+using Microsoft.AspNetCore.SignalR;
+using CleanVisitor.Api.Hubs;
 [ApiController]
 [Route("api/[controller]")]
 public class VisitController : ControllerBase
 {
     private readonly IMediator _mediator;
-    public VisitController(IMediator mediator)
+    private readonly IHubContext<VisitHub> _hubContext;
+    public VisitController(IMediator mediator, IHubContext<VisitHub> hubContext)
     {
         _mediator=mediator;
+        _hubContext = hubContext;
     }
     [HttpPost]
-    public async Task<IActionResult>Create([FromBody] CreateVisitCommand request)
+    public async Task<IActionResult> Create([FromBody] CreateVisitCommand request)
     {
-        var visit= await _mediator.Send(request);
+        // 1. Création de la visite via MediatR
+        var visit = await _mediator.Send(request);
+
+        await _hubContext.Clients.All.SendAsync("ReceiveNewVisit", visit);
+
         return Ok(visit);
     }
     [HttpGet("{id:int}")]
@@ -91,13 +100,13 @@ public class VisitController : ControllerBase
         var result = await _mediator.Send(new RestoreVisiteCommand(id));
         return Ok(new { RestoredId = result });
     }
-    [HttpPatch("{id}/status")] // On utilise Patch car on ne modifie qu'une partie de la donnée
+// On utilise Patch car on ne modifie qu'une partie de la donnée
+public record UpdateStatusRequest(int Statut);
 [HttpPatch("{id}/status")]
-public async Task<IActionResult> UpdateStatus(int id, [FromBody] int newStatus)
+public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest request)
 {
-    // On crée une commande spécifique pour le changement de statut
-    // Tu devras créer cette classe "UpdateVisitStatusCommand" dans ton dossier Features
-    var result = await _mediator.Send(new UpdateVisitStatusCommand(id, newStatus));
+    // On utilise request.Statut pour récupérer la valeur 2 (Terminé)
+    var result = await _mediator.Send(new UpdateVisitStatusCommand(id, request.Statut));
     
     if (!result) return NotFound("Visite introuvable");
     
@@ -110,5 +119,11 @@ public async Task<IActionResult> GetDetails()
     var result = await _mediator.Send(query);
     return Ok(result);
 }
+[HttpGet("user/{userId}")] // Ceci s'ajoute à la route de base
+    public async Task<IActionResult> GetMyVisits(int userId)
+    {
+        var query = new GetUserVisitsQuery(userId);
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
 }
-    

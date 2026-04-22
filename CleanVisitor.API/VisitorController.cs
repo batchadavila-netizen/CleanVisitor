@@ -42,7 +42,7 @@ public async Task<IActionResult> GetById(int id)
     if (result == null) return NotFound(); 
     return Ok(result);
 }
-[HttpGet("detail/{id}")]
+[HttpGet("visitor/{id}")]
 public async Task<IActionResult>GetVisitorVisit([FromRoute]int id)
     {
         var visitor= await _mediator.Send(new GetVisitorVisitQuery(id));

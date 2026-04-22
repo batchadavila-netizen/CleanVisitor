@@ -1,5 +1,6 @@
 using AutoMapper;
 using CleanVisitor.Core.Entities.User;
+using CleanVisitor.Core.Entities;
 using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Application.Features.Users.Commande.CreateUser;
 using CleanVisitor.Application.Features.Users.Commande.DeleteUser.DeleteUserCommand;
@@ -43,6 +44,8 @@ CreateMap<UserDto, User>().ReverseMap();
         });
         
         CreateMap<UserRegistrationDto, User>().ReverseMap();
-        CreateMap<RegisterUserCommand, User>();
+        CreateMap<RegisterUserCommand, User>();// Dans ton MappingProfile.cs (si nécessaire)
+      CreateMap<RegisterUserCommand, Visitor>()
+    .ForMember(dest => dest.Prenom, opt => opt.MapFrom(src => src.Prenom));
     }
 }

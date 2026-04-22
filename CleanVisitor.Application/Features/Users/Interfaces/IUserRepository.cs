@@ -12,4 +12,5 @@ public interface IUserRepository
     Task<List<UserDto>> GetDeletedAsync();
     Task<UserDto> GetDeletedByIdAsync(int id);
     Task<int>RestoreAsync(int id);
+    Task<UserProfileDto> GetUserProfileAsync(int userId);
 }

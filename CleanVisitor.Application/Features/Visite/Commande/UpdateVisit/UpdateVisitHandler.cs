@@ -20,9 +20,20 @@ namespace CleanVisitor.Application.Feautures.Visite.Commandes.Handler.VisitHandl
         }
 
         public async Task<VisitDto?> Handle(UpdateVisitCommand request, CancellationToken cancellationToken)
-        {
-       var visit=_mapper.Map<Visit>(request);
-       return await _repository.UpdateAsync(visit);
-            
-        }
+{
+    // Si GetByIdAsync renvoie un VisitDto, on doit le re-transformer en Visit
+    var visitDto = await _repository.GetByIdAsync(request.Id);
+    if (visitDto == null) return null;
+
+    // Convertir le DTO en Entité pour le Repository
+    var visitEntity = _mapper.Map<Visit>(visitDto);
+
+    // Appliquer les changements de la requête
+    _mapper.Map(request, visitEntity);
+
+    // Envoyer l'entité
+    var result = await _repository.UpdateAsync(visitEntity);
+
+    return _mapper.Map<VisitDto>(result);
+}
     }

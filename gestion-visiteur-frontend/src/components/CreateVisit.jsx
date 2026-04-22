@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { visitorService } from '../services/visitorService';
 import { visitService } from '../services/visitService';
-import Sidebar from './Sidebar'; // Assure-toi que le chemin est correct
+import Sidebar from './Sidebar';
 
 const CreateVisit = () => {
     const [visitors, setVisitors] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    
     const [formData, setFormData] = useState({
         motif: '',
         idVisitor: '',
-        service: 1, // Direction par défaut
-        heureArriver: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        service: 1, 
+        heureArriver: new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),
         date: new Date().toISOString().split('T')[0]
     });
 
     useEffect(() => {
-        // Chargement des visiteurs pour la liste déroulante
         const fetchVisitors = async () => {
             try {
                 const data = await visitorService.getAll();
@@ -29,71 +29,102 @@ const CreateVisit = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        const payload = {
+            motif: formData.motif,
+            idVisitor: Number(formData.idVisitor),
+            service: Number(formData.service),
+            heureArriver: formData.heureArriver.length === 5 ? `${formData.heureArriver}:00` : formData.heureArriver,
+            date: formData.date,
+            statut: 1,
+            isDeleted: false
+        };
+
         try {
-            const payload = {
-                ...formData,
-                idVisitor: parseInt(formData.idVisitor),
-                service: parseInt(formData.service),
-                statut: 1 // 1 = En attente (selon ton Enum C#)
-            };
+            // APPEL CREATE UNIQUEMENT
             await visitService.create(payload);
-            alert("✅ Visite enregistrée ! En attente de validation par l'administration.");
+            alert("Nouvelle visite créée avec succès !");
             
-            // Optionnel : Réinitialiser le motif après succès
-            setFormData({ ...formData, motif: '' });
+            // Reset du formulaire après succès
+            setFormData({
+                ...formData,
+                motif: '',
+                idVisitor: ''
+            });
         } catch (err) {
-            console.error(err);
-            alert("❌ Erreur lors de la création de la visite. Vérifiez votre connexion au serveur.");
+            console.error("Erreur:", err.response?.data);
+            alert("Erreur lors de l'enregistrement");
         }
     };
 
     return (
         <div className="flex min-h-screen bg-slate-50">
-            {/* Barre latérale de navigation */}
             <Sidebar 
                 isOpen={isSidebarOpen} 
                 toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
             />
 
-            {/* Contenu principal décalé selon la Sidebar */}
             <main className={`flex-1 p-8 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
-                
                 <div className="max-w-2xl mx-auto">
-                    {/* En-tête de la page */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-black text-slate-800">Enregistrer une visite</h1>
-                        <p className="text-slate-500">Remplissez les informations ci-dessous pour planifier une nouvelle rencontre.</p>
+                        <p className="text-slate-400 text-sm font-medium">Nouveau passage de visiteur</p>
                     </div>
 
-                    {/* Carte du Formulaire */}
-                    <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
-                        <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                            <span className="bg-blue-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm">📝</span>
-                            Détails de la visite
-                        </h2>
-                        
+                    <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-200/60 border border-slate-100">
                         <form onSubmit={handleSubmit} className="space-y-6">
+                            
                             {/* Sélection du Visiteur */}
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Visiteur concerné</label>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                    Visiteur concerné
+                                </label>
                                 <select 
                                     required
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 outline-none font-bold text-slate-700 appearance-none cursor-pointer focus:ring-2 ring-blue-500/20 transition-all"
                                     value={formData.idVisitor}
                                     onChange={(e) => setFormData({...formData, idVisitor: e.target.value})}
                                 >
-                                    <option value="">-- Sélectionnez un visiteur dans la liste --</option>
+                                    <option value="">-- Sélectionnez un visiteur --</option>
                                     {visitors.map(v => (
                                         <option key={v.id} value={v.id}>{v.nom} {v.prenom}</option>
                                     ))}
                                 </select>
                             </div>
 
+                            {/* Date et Heure */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                        Date
+                                    </label>
+                                    <input 
+                                        type="date"
+                                        value={formData.date}
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 outline-none font-bold text-slate-600 focus:ring-2 ring-blue-500/20"
+                                        onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                        Heure d'arrivée
+                                    </label>
+                                    <input 
+                                        type="time"
+                                        value={formData.heureArriver}
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 outline-none font-bold text-slate-600 focus:ring-2 ring-blue-500/20"
+                                        onChange={(e) => setFormData({...formData, heureArriver: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+
                             {/* Sélection du Service */}
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Service à visiter</label>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                    Service à visiter
+                                </label>
                                 <select 
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 outline-none font-bold text-slate-700 appearance-none cursor-pointer focus:ring-2 ring-blue-500/20"
                                     value={formData.service}
                                     onChange={(e) => setFormData({...formData, service: e.target.value})}
                                 >
@@ -107,21 +138,21 @@ const CreateVisit = () => {
 
                             {/* Motif */}
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Motif de la visite</label>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                                    Motif de la visite
+                                </label>
                                 <textarea 
                                     required
-                                    rows="4"
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 outline-none h-32 resize-none font-medium text-slate-600 focus:ring-2 ring-blue-500/20 transition-all"
                                     placeholder="Précisez l'objet du rendez-vous..."
                                     value={formData.motif}
                                     onChange={(e) => setFormData({...formData, motif: e.target.value})}
                                 />
                             </div>
 
-                            {/* Bouton de soumission */}
                             <button 
                                 type="submit" 
-                                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all"
+                                className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all"
                             >
                                 CONFIRMER L'ENREGISTREMENT
                             </button>

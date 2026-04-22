@@ -99,3 +99,7 @@ C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\obj\Debug\net9.
 C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\obj\Debug\net9.0\CleanVisitor.API.pdb
 C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\obj\Debug\net9.0\CleanVisitor.API.genruntimeconfig.cache
 C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\obj\Debug\net9.0\ref\CleanVisitor.API.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\BouncyCastle.Cryptography.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\MailKit.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\MimeKit.dll

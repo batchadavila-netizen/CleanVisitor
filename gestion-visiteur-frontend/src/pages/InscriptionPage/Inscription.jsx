@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authService } from '../../services/authService'; // Vérifie bien le nombre de "../"
+import { authService } from '../../services/authService';
 
 const Inscription = () => {
     const navigate = useNavigate();
@@ -8,23 +8,22 @@ const Inscription = () => {
         nom: '',
         prenom: '',
         email: '',
+        telephone: '', // 1. Ajout du champ dans l'état initial
         password: '',
-        role: '' 
+        role: '3' // Par défaut Visiteur
     });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Appel de la commande RegisterUserCommand de ton Backend
+            // Le formData contient maintenant le téléphone
             await authService.Inscription(formData);
             
-            alert("Inscription réussie ! Vous allez être redirigé.");
-            // Puisque ton backend renvoie une AuthenticationResponse, 
-            // l'utilisateur est déjà connecté dans le localStorage.
-            navigate('/dashboard'); 
+            alert("Inscription réussie !");
+            navigate('/login'); 
         } catch (err) {
             console.error("Erreur d'inscription:", err);
-            alert("Erreur lors de la création du compte. Vérifiez votre connexion au serveur.");
+            alert(err.message); 
         }
     };
 
@@ -58,6 +57,18 @@ const Inscription = () => {
                         </div>
                     </div>
 
+                    {/* 2. NOUVEAU : Champ Téléphone */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Téléphone</label>
+                        <input 
+                            type="tel" 
+                            required
+                            placeholder="+237 6XX XX XX XX"
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
+                            onChange={(e) => setFormData({...formData, telephone: e.target.value})}
+                        />
+                    </div>
+
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Email</label>
                         <input 
@@ -81,8 +92,9 @@ const Inscription = () => {
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Type de compte</label>
                         <select 
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
-                            onChange={(e) => setFormData({...formData, role: parseInt(e.target.value)})}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                            value={formData.role}
+                            onChange={(e) => setFormData({...formData, role: e.target.value})}
                         >
                             <option value="3">Visiteur</option>
                             <option value="2">Agent</option>

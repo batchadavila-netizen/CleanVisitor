@@ -8,7 +8,11 @@ public class MapperVisit : Profile
 {
     public MapperVisit()
     {
-        CreateMap<VisitDto, Visit>().ReverseMap();
+        CreateMap<Visit, VisitDto>()
+            // On force le mapping de l'ID au cas où les noms diffèrent 
+            // ou si AutoMapper ignore la clé primaire par défaut
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ReverseMap();
         CreateMap<CreateVisitCommand, Visit>();
         CreateMap<UpdateVisitCommand, Visit>();  
         CreateMap<UpdateVisitCommand, VisitDto>();   

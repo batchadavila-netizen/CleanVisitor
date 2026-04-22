@@ -58,15 +58,20 @@ public async Task<VisitDto?> UpdateAsync(Visit visit)
                 
                 return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, new { Id = id });
             }
-       public async Task<List<VisitDto?>> GetAllAsync()
+      public async Task<List<VisitDto?>> GetAllAsync()
 {
-    var sql = @"SELECT *
-     FROM [Visit]
-     WHERE IsDeleted=0";
-    using var connection = new SqlConnection(_connectionString);
-    var visit= await connection.QueryAsync<VisitDto?>(sql);
-    return visit.ToList();
+    var sql = @"
+        SELECT 
+            v.Id As Id,v.Motif As Motif, Date As Date, HeureDepart As HeureDepart, HeureArriver As HeureArriver, Statut As Statut, Service As Service,  
+            vt.Nom AS Nom_visitor,   
+            vt.Email AS Email_visitor
+        FROM [Visit] v
+        INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
+        WHERE v.IsDeleted = 0";
 
+    using var connection = new SqlConnection(_connectionString);
+    var visits = await connection.QueryAsync<VisitDto>(sql);
+    return visits.ToList()!;
 }
       public async Task<bool> DeleteAsync(int id)
 {
@@ -134,7 +139,7 @@ public async Task<int> RestoreAsync(int id)
     }
     public async Task<bool> UpdateStatusAsync(int id, int newStatus)
 {
-    // On met à jour le statut (1=En attente, 2=Terminé/Validé, 3=Annulé)
+    // On met à jour la colonne Statut
     const string sql = @"UPDATE [Visit] SET Statut = @Statut WHERE Id = @Id";
     
     using var connection = new SqlConnection(_connectionString);
@@ -146,6 +151,9 @@ public async Task<int> RestoreAsync(int id)
 public async Task<IEnumerable<VisitDetailsDto>> GetAllVisitsWithDetailsAsync()
 {
     using var connection = new SqlConnection(_connectionString);
+    
+    // Assure-toi que les noms de colonnes SQL correspondent exactement 
+    // aux noms des propriétés dans ton VisitDetailsDto
     var sql = @"
         SELECT 
             v.Id, 
@@ -156,10 +164,35 @@ public async Task<IEnumerable<VisitDetailsDto>> GetAllVisitsWithDetailsAsync()
             v.IdVisitor,
             vt.Nom, 
             vt.Email 
-        FROM Visites v 
-        INNER JOIN Visiteurs vt ON v.IdVisitor = vt.Id
+        FROM Visit v 
+        INNER JOIN Visitors vt ON v.IdVisitor = vt.Id
         WHERE v.IsDeleted = 0";
 
-    return await connection.QueryAsync<VisitDetailsDto>(sql);
+    try 
+    {
+        // Dapper mappe automatiquement les colonnes vers VisitDetailsDto
+        var result = await connection.QueryAsync<VisitDetailsDto>(sql);
+        return result;
+    }
+    catch (SqlException ex)
+    {
+        // LOG IMPORTANT : Si erreur 500, regarde ici dans ta console de debug
+        Console.WriteLine($"Erreur SQL : {ex.Message}");
+        throw; // Renvoie l'erreur pour que l'API sache qu'il y a un problème
+    }
+}
+public async Task<List<VisitDto>> GetUserVisitsAsync(int userId)
+{
+    const string sql = @"
+        SELECT 
+            v.Id, v.Motif, v.Date, v.HeureArriver, v.HeureDepart, v.Statut, v.Service
+        FROM [Visit] v
+        INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
+        INNER JOIN [User] u ON vt.Email = u.Email
+        WHERE u.Id = @UserId AND v.IsDeleted = 0";
+
+    using var connection = new SqlConnection(_connectionString);
+    var result = await connection.QueryAsync<VisitDto>(sql, new { UserId = userId });
+    return result.ToList();
 }
     }

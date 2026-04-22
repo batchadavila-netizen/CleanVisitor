@@ -9,8 +9,9 @@ public class CreateVisitValidator : AbstractValidator<CreateVisitCommand>
         .NotEmpty().WithMessage("Le Motif est obligatoire")
         .MaximumLength(50).WithMessage("Le motif ne dois pas de passer 50 caractere");
 
-        RuleFor(v=>v.Date)
-        .LessThanOrEqualTo(DateTime.Now).WithMessage("On ne peut entrez une date futur");
+       RuleFor(v => v.Date)
+    .GreaterThanOrEqualTo(DateTime.Today)
+    .WithMessage("La visite doit être prévue pour aujourd'hui ou plus tard.");
         
         RuleFor(t=>t.Service)
         .IsInEnum().WithMessage("Le Service Choisir N'exite Pas");
