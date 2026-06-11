@@ -2,7 +2,7 @@ using CleanVisitor.Application.Features.Users.Interfaces.IJwtTokenGenerator;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using MediatR;
-using  CleanVisitor.Infrastructure.AuthService.JwtTokenGenerator;
+using  CleanVisitor.Infrastructure.Services.JwtTokenGenerator;
 
 namespace CleanVisitor.Infrastructure.DependencyInjection;
 public static class DependencyInjection {

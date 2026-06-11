@@ -8,7 +8,7 @@ using CleanVisitor.Application.Features.Users.Interfaces;
 using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Core.Enum.UserRole;
 using CleanVisitor.Core.Entities.User;
-namespace CleanVisitor.Infrastructure.AuthService.JwtTokenGenerator;
+namespace CleanVisitor.Infrastructure.Services.JwtTokenGenerator;
 public class JwtTokenGenerator : IJwtTokenGenerator
 {
     private readonly IConfiguration _configuration;
@@ -16,7 +16,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     {
         _configuration = configuration;
     }
-public string GenerateToken( User user)
+public string GenerateToken( UserDto user)
 
 {
 // 1. On prépare les informations à mettre dans le badge

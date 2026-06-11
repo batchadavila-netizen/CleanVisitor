@@ -1,77 +1,101 @@
 import React from 'react';
+import { Calendar, Clock, Tag, FileText, X, RefreshCcw, AlertCircle } from 'lucide-react';
 
 const DetailVisitModal = ({ visit, onClose, onReschedule }) => {
-  // Sécurité : si aucune visite n'est sélectionnée, on n'affiche rien
   if (!visit) return null;
 
-  // Vérifier si la date est passée ou aujourd'hui pour autoriser la reprogrammation
-  const canReschedule = new Date(visit.date).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0);
+  // Statut initial
+  const s = visit.statut || visit.Statut;
+
+  // Calcul de la date/heure de la visite
+  const visitDateTime = new Date(`${visit.date}T${visit.heureArriver || visit.HeureArriver || "00:00"}`);
+  const now = new Date();
+
+  // 🔥 Règles dynamiques
+  let statutEffectif = s;
+  if (visitDateTime < now) {
+    if (s === 2 || s === "Accepter") {
+      statutEffectif = 3; // Terminé
+    } else if (s === 1 || s === "En attente") {
+      statutEffectif = 4; // Rejeté
+    }
+  }
+
+  // Définition des états selon le statut effectif
+  const isAcceptee = statutEffectif === 2 || statutEffectif === "Accepter";
+  const isTerminee = statutEffectif === 3 || statutEffectif === "Terminé" || statutEffectif === "Terminee";
+  const isRejetee = statutEffectif === 4 || statutEffectif === "Annulé" || statutEffectif === "Rejeter";
+
+  // Règle : Autorisé si Accepté ou Rejeté, mais JAMAIS si déjà terminé
+  // Remplace ta ligne 33 par celle-ci :
+const canReschedule = [1, 2, 4, "En attente", "Accepter", "Annulé"].includes(statutEffectif);
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
         
-        {/* Header de la Modal */}
-        <div className="bg-indigo-600 p-8 text-white relative">
-          <button 
-            onClick={onClose} 
-            className="absolute top-6 right-6 hover:rotate-90 transition-transform p-2"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        {/* Header dynamique selon le statut */}
+        <div className={`p-8 text-white relative ${isRejetee ? 'bg-red-500' : isTerminee ? 'bg-green-600' : 'bg-indigo-600'}`}>
+          <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+            <X size={20} />
           </button>
-          <h2 className="text-2xl font-black uppercase tracking-tighter">Détails de la Visite</h2>
-          <p className="opacity-80 text-xs font-bold mt-1">Référence du ticket : #VIS-{visit.id}</p>
+          <div className="flex items-center gap-3 mb-2">
+             <h2 className="text-xl font-black uppercase tracking-tighter">
+                {isRejetee ? 'Visite Rejetée' : isTerminee ? 'Visite Terminée' : 'Détails de la Visite'}
+             </h2>
+          </div>
+          <p className="opacity-80 text-[10px] font-black uppercase tracking-widest">Référence : #VIS-{visit.id}</p>
         </div>
 
-        {/* Corps de la Modal */}
         <div className="p-8 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Alerte si rejetée */}
+          {isRejetee && (
+            <div className="flex gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-medium">
+              <AlertCircle size={16} className="shrink-0" />
+              <p>Cette demande a été refusée. Vous pouvez la reprogrammer pour proposer un nouveau créneau.</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-6">
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase">Date prévue</p>
-              <p className="font-bold text-slate-700">
-                {new Date(visit.date).toLocaleDateString('fr-FR')}
-              </p>
+              <p className="text-[10px] font-black text-slate-400 uppercase">Date</p>
+              <p className="font-bold text-slate-700">{new Date(visit.date).toLocaleDateString('fr-FR')}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase">Heure d'arrivée</p>
-              <p className="font-bold text-slate-700">{visit.heureArriver || '--:--'}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase">Heure</p>
+              <p className="font-bold text-slate-700">{visit.heureArriver || visit.HeureArriver || '--:--'}</p>
             </div>
           </div>
 
           <div className="space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase">Service à visiter</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase">Service</p>
             <p className="font-bold text-indigo-600">{visit.service || 'Non spécifié'}</p>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase">Motif de la visite</p>
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase">Motif</p>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm text-slate-600 italic">
               "{visit.motif}"
             </div>
           </div>
 
-          {/* Footer Actions */}
           <div className="pt-4 flex flex-col gap-3">
-            {/* On ne peut reprogrammer que si la visite n'est pas passée (statut différent de 3 / Terminé) */}
-            {canReschedule && visit.statut !== 3 ? (
+            {canReschedule ? (
               <button 
                 onClick={() => onReschedule(visit)} 
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                className={`w-full py-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95 text-white ${
+                  isRejetee ? 'bg-red-600 hover:bg-red-700 shadow-red-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'
+                }`}
               >
-                🔄 Reprogrammer la visite
+                <RefreshCcw size={18} /> Reprogrammer maintenant
               </button>
             ) : (
-              <div className="text-center p-3 bg-slate-50 rounded-xl text-[10px] font-bold text-slate-400 uppercase border border-dashed border-slate-200">
-                Reprogrammation non disponible
+              <div className="text-center p-4 bg-slate-50 rounded-2xl text-[10px] font-black text-slate-400 uppercase border border-dashed border-slate-200">
+                {isTerminee ? "✅ Visite terminée" : isRejetee ? "❌ Visite rejetée" : "⏳ En attente de décision"}
               </div>
             )}
 
-            <button 
-              onClick={onClose}
-              className="w-full py-4 text-slate-400 text-[10px] font-black uppercase hover:text-slate-600 transition-colors"
-            >
+            <button onClick={onClose} className="w-full py-2 text-slate-400 text-[10px] font-black uppercase tracking-widest">
               Fermer
             </button>
           </div>

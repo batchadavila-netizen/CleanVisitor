@@ -1,9 +1,12 @@
 using AutoMapper;
 using CleanVisitor.Core.Entities;
+using CleanVisitor.Core.Entities.Visits;
 using CleanVisitor.Application.Features.Visitors.Commande.CreateVisitor;
 using CleanVisitor.Application.Features.Visitors.Dtos;
 using CleanVisitor.Application.Features.Visitors.Commande.UpdateVisitor;
 using CleanVisitor.Application.Features.Visitors.Commande.DeleteVisitor;
+
+
 public class MappingProfile : Profile
 {
     public MappingProfile()
@@ -11,6 +14,9 @@ public class MappingProfile : Profile
         CreateMap<VisitorDto, Visitor>().ReverseMap();
         CreateMap<CreateVisitorCommand, Visitor>();
         CreateMap<DeleteVisitorCommand, VisitorDto>();
-        CreateMap<UpdateVisitorCommand, Visitor>();  
-    }
+        CreateMap<UpdateVisitorCommand, Visitor>();
+
+        // 🔥 AJOUT : Mapping Visit → VisitClonDto
+       
+}
 }

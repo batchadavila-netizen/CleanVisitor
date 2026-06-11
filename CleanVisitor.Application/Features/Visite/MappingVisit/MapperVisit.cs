@@ -4,6 +4,7 @@ using CleanVisitor.Application.Features.Visite.Commande.CreateVisit;
 using CleanVisitor.Application.Features.Visite.Commande.DeleteVisit;
 using CleanVisitor.Application.Features.Visite.Commande.UpdateVisit.UpdateVisitCommand;
 using CleanVisitor.Application.Features.Visite.Dtos;
+using CleanVisitor.Features.Visitors.Dtos.VisitCloneDto;
 public class MapperVisit : Profile
 {
     public MapperVisit()
@@ -17,5 +18,9 @@ public class MapperVisit : Profile
         CreateMap<UpdateVisitCommand, Visit>();  
         CreateMap<UpdateVisitCommand, VisitDto>();   
         CreateMap<DeleteVisitCommand, VisitDto>(); 
+
+         CreateMap<Visit, VisitClonDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.IdVisitor, opt => opt.MapFrom(src => src.IdVisitor));
     }
-}
+    }

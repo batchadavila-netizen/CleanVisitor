@@ -103,3 +103,5 @@ C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.
 C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\BouncyCastle.Cryptography.dll
 C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\MailKit.dll
 C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\MimeKit.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\Microsoft.Extensions.Configuration.dll
+C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.API\bin\Debug\net9.0\BCrypt-Net-Next.dll

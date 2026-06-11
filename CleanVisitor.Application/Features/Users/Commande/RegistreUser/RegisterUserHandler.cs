@@ -59,7 +59,7 @@ if ((int)user.Role == 3)
 
         // 2. Génération du jeton et réponse
         var userDto = _mapper.Map<UserDto>(user);
-        var token = _jwtTokenGenerator.GenerateToken(user);
+        var token = _jwtTokenGenerator.GenerateToken(userDto);
 
         return new AuthenticationResponse(userDto, token, roleName);
     }

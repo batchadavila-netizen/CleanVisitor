@@ -23,11 +23,18 @@ public class VisitRepository :IVisitRepository
     
        public async Task<VisitDto> AddAsync(Visit visit)
 {
-    // On enlève le SCOPE_IDENTITY car OUTPUT INSERTED fait déjà le travail
     var sql = @"
-        INSERT INTO Visit (Motif, Date, HeureDepart, HeureArriver, Statut, Service, IdVisitor, IsDeleted) 
-        OUTPUT INSERTED.*
-        VALUES (@Motif, @Date, @HeureDepart, @HeureArriver, @Statut, @Service, @IdVisitor, 0);";
+        INSERT INTO [Visit] (Motif, Date, HeureDepart, HeureArriver, Statut, Service, IdVisitor, IsDeleted) 
+        VALUES (@Motif, @Date, @HeureDepart, @HeureArriver, @Statut, @Service, @IdVisitor, 0);
+        
+        -- On récupère l'ID généré
+        DECLARE @NewId INT = SCOPE_IDENTITY();
+
+        -- On renvoie l'objet complet avec les détails du visiteur
+        SELECT v.*, vt.Nom AS Nom_visitor, vt.Email AS Email_visitor
+        FROM [Visit] v
+        INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
+        WHERE v.Id = @NewId;";
         
     using (var connection = new SqlConnection(_connectionString))
     {
@@ -38,26 +45,37 @@ public class VisitRepository :IVisitRepository
 public async Task<VisitDto?> UpdateAsync(Visit visit)
 {
     using var connection = new SqlConnection(_connectionString);
-    // Correction de la virgule et du WHERE
-    string sql = @"UPDATE [Visit] 
-                   SET Motif=@Motif, Date=@Date, HeureDepart=@HeureDepart, 
-                       HeureArriver=@HeureArriver, Statut=@Statut, Service=@Service 
-                   WHERE Id=@Id;
-                   SELECT * FROM [Visit] WHERE Id=@Id;";
+    string sql = @"
+        UPDATE [Visit] 
+        SET Motif=@Motif, Date=@Date, HeureDepart=@HeureDepart, 
+            HeureArriver=@HeureArriver, Statut=@Statut, Service=@Service 
+        WHERE Id=@Id;
+
+        SELECT v.*, vt.Nom AS Nom_visitor, vt.Email AS Email_visitor
+        FROM [Visit] v
+        INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
+        WHERE v.Id = @Id;";
                    
     return await connection.QueryFirstOrDefaultAsync<VisitDto>(sql, visit);
 }
 
         public async Task<VisitDto?> GetByIdAsync(int id)
-        {
+{
+    // On ajoute une jointure pour récupérer le Nom et l'Email du visiteur
+    string sql = @"
+        SELECT 
+            v.*, 
+            vt.Nom AS Nom_visitor, 
+            vt.Email AS Email_visitor
+        FROM [Visit] v
+        INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
+        WHERE v.[Id] = @Id AND v.IsDeleted = 0";
 
-                string sql = @"SELECT *
-               FROM [Visit] 
-               WHERE [Id] = @Id AND IsDeleted=0";
-                using (var connection = new SqlConnection(_connectionString))
-                
-                return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, new { Id = id });
-            }
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, new { Id = id });
+    }
+}
       public async Task<List<VisitDto?>> GetAllAsync()
 {
     var sql = @"

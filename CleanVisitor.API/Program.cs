@@ -12,13 +12,15 @@ using System.Text.Json.Serialization;
 using CleanVisitor.Application.Features.Visitors.Interfaces;
 using CleanVisitor.Application.Features.Dashboard.Interfaces;
 using CleanVisitor.Application.Features.Visite.Interfaces;
+using CleanVisitor.Application.Features.Notifications.Interfaces;
 using CleanVisitor.Application.Features.Users.Interfaces;
 using CleanVisitor.Application.Features.Users.Interfaces.IJwtTokenGenerator;
 using CleanVisitor.Application.DependencecyInjection;
-using CleanVisitor.Infrastructure.AuthService.JwtTokenGenerator;
+using CleanVisitor.Infrastructure.Services.JwtTokenGenerator;
 using CleanVisitor.Infrastructure.Repositories.UserRepository;
 using CleanVisitor.Application.Features.Visite.Commande.EmailSetting;
 using CleanVisitor.Infrastructure.Services;
+using CleanVisitor.Application.Features.Notifications.Interfaces.IRealTimeNotificationService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -107,11 +109,12 @@ builder.Services.AddScoped<IVisitorRepository, VisitorRepository>();
 builder.Services.AddScoped<IVisitRepository, VisitRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
-builder.Services.AddScoped<IVisitNotificationService, VisitNotificationService>();
+builder.Services.AddScoped<INotificationService, NotificationRepository>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 // Ajoute cette ligne pour l'Email
-builder.Services.Configure<EmailCommande>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.Configure<EmailCommande>(builder.Configuration.GetSection("EmailCommand"));
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IRealTimeNotificationService, NotificationService>();
 
 var app = builder.Build();
 

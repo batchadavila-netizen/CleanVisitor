@@ -31,7 +31,7 @@ const Login = () => {
             } 
             else {
                 // Pour les Visiteurs (rôle 3)
-                navigate('/my-visits');
+                navigate('/mon-espace');
             }
         }
     } catch (err) {

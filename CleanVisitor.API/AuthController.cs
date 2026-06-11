@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using CleanVisitor.Application.Features.Users.Commande.RegistreUser;
 using CleanVisitor.Application.Features.Users.Querries.LoginUser;
+using CleanVisitor.Application.Features.Users.Commande.ForgotPassword;
+using CleanVisitor.Application.Features.Users.Commande.ResetPassword;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("api/auth")]
@@ -39,4 +42,22 @@ public class AuthController : ControllerBase
         // 3. Retourner le Token et les infos utilisateur
         return Ok(authResponse);
     }
+[HttpPost("forgot-password")]
+[AllowAnonymous]
+public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand command)
+{
+    await _mediator.Send(command);
+    // Toujours retourner OK pour ne pas révéler si l'email existe
+    return Ok(new { message = "Si cet email existe, un lien a été envoyé." });
+}
+
+[HttpPost("reset-password")]
+[AllowAnonymous]
+public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command)
+{
+    var result = await _mediator.Send(command);
+    if (!result)
+        return BadRequest(new { message = "Token invalide ou expiré." });
+    return Ok(new { message = "Mot de passe réinitialisé avec succès." });
+}
 }

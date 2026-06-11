@@ -62,13 +62,14 @@ public class UserController : ControllerBase
         return Ok(user);
     }
 
-    [HttpGet("email/{email}")] // Changement de route pour éviter le conflit avec GetById
-    public async Task<IActionResult> GetByEmailAsync(string email)
-    {
-        var user = await _mediator.Send(new GetByEmailUserQuery(email));
-        if (user == null) return NotFound(); // Correction : on vérifie 'user', pas 'email'
-        return Ok(user);
-    }
+    [HttpGet("email/{email}")]
+public async Task<IActionResult> GetByEmailAsync(string email)
+{
+    var user = await _mediator.Send(new GetByEmailUserQuery(email));
+    if (user == null) return NotFound();
+    return Ok(user);
+}
+
 
     [HttpGet]
     public async Task<IActionResult> GetAllAsync()

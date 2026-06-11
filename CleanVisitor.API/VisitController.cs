@@ -1,6 +1,8 @@
 using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
+using CleanVisitor.Core.Entities.Visits;
+using CleanVisitor.Core.Entities.Notification;
 using CleanVisitor.Infrastructure.Data;
 using CleanVisitor.Application.Features.Visite.Commande.CreateVisit;
 using CleanVisitor.Application.Features.Visite.Commande.DeleteVisit;
@@ -16,17 +18,23 @@ using CleanVisitor.Application.Features.Visite.Commande.UpdateVisitStatus;
 using CleanVisitor.Application.Features.Visite.Querries.GetVisitsWithDetails;
 using CleanVisitor.Application.Features.Visite.Querries.GetUserVisits;
 using Microsoft.AspNetCore.SignalR;
+using CleanVisitor.Application.Features.Visite.Interfaces;
 using CleanVisitor.Api.Hubs;
+using CleanVisitor.Application.Features.Visite.Dtos;
 [ApiController]
 [Route("api/[controller]")]
 public class VisitController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IHubContext<VisitHub> _hubContext;
-    public VisitController(IMediator mediator, IHubContext<VisitHub> hubContext)
+    private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
+    public VisitController(IMediator mediator, IHubContext<VisitHub> hubContext, IConfiguration configuration, IEmailService emailService)
     {
         _mediator=mediator;
         _hubContext = hubContext;
+        _configuration = configuration;
+        _emailService=emailService;
     }
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVisitCommand request)
@@ -65,11 +73,18 @@ public class VisitController : ControllerBase
         return Ok(visit);
     }
     [HttpPut]
-    public async Task<IActionResult>UpdateAsync( [FromBody] UpdateVisitCommand request)
-    {
-        await _mediator.Send(request);
-        return NoContent();
-    }
+public async Task<IActionResult> UpdateVisit([FromBody] UpdateVisitCommand command) 
+{
+    // On envoie tout au Handler (Id, Date, Heure, Motif, Statut, etc.)
+    var result = await _mediator.Send(command);
+    
+    if (result == null) return NotFound("Visite introuvable");
+
+    // Notification en temps réel via SignalR si nécessaire
+    await _hubContext.Clients.All.SendAsync("VisitUpdated", result);
+
+    return Ok(result);
+}
      [HttpGet("count_by_service")]
     public async Task<IActionResult> GetVisitCountByService()
     {

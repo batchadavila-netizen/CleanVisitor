@@ -4,5 +4,5 @@ using CleanVisitor.Application.Features.Users.Dtos;
 namespace CleanVisitor.Application.Features.Users.Interfaces.IJwtTokenGenerator;
 public interface IJwtTokenGenerator
 {
-string GenerateToken(User user );
+string GenerateToken(UserDto user );
 }

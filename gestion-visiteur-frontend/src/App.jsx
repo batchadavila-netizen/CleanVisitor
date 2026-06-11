@@ -1,38 +1,42 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+
+// Pages
 import LandingPage from './pages/LandingPage/LandingPage';
 import Login from './pages/LoginPage/Login';
 import Inscription from './pages/InscriptionPage/Inscription';
 import Dashboard from './pages/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
 import VisitorsList from './pages/VisitorsList';
+import VisiteurDashboard from './pages/VisiteurDashboard';
 
-// AJOUTE CET IMPORT ICI (Vérifie bien le chemin vers ton fichier UserVisits)
-import UserVisits from './pages/UserVisits'; 
-
-// Tes composants (Vérifie que le chemin ./components/... est correct)
+// Composants
+import ProtectedRoute from './components/ProtectedRoute';
 import AdminValidation from './components/AdminValidation'; 
-import VisiteurDashboard from './components/VisiteurDashboard';
 import CreateVisit from './components/CreateVisit'; 
 import AgentVisits from './components/AgentVisits';
 import Profile from './components/Profile';
 import CreateVisitModal from './components/CreateVisitModal';
-import RescheduleVisit from './components/RescheduleVisit';
+import ResetPasswordPage from './components/MotDePasseOublier/ResetPasswordPage';
+import ForgotPasswordForm from './components/MotDePasseOublier/ForgotPasswordForm';
+
+// Services
 import { startSignalRConnection } from './services/signalRService';
+
 function App() {
   useEffect(() => {
     startSignalRConnection();
   }, []);
+
   return (
     <Router>
       <Routes>
-        {/* Routes Publiques */}
+        {/* --- ROUTES PUBLIQUES --- */}
         <Route path="/" element={<Navigate to="/LandingPage" />} />
         <Route path="/LandingPage" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/Inscription" element={<Inscription />} />
 
-        {/* Routes Admin & Agent */}
+        {/* --- ROUTES ADMIN & AGENT --- */}
         <Route path="/dashboard" element={
           <ProtectedRoute allowedRoles={['Admin']}>
             <Dashboard />
@@ -50,52 +54,46 @@ function App() {
             <AdminValidation />
           </ProtectedRoute>
         } />
-        {/* Interface pour l'Agent d'accueil */}
-<Route path="/agent-visits" element={
-  <ProtectedRoute allowedRoles={['Agent']}>
-    <AgentVisits />
-  </ProtectedRoute>
-} />
 
-{/* Interface pour le Visiteur (Espace Personnel) */}
-<Route path="/mon-espace" element={
-  <ProtectedRoute allowedRoles={['Visiteur']}>
-    <VisiteurDashboard />
-  </ProtectedRoute>
-} />
-        {/* Routes Visiteur */}
-        <Route path="/create-visit" element={
+        {/* Interface pour l'Agent d'accueil (ou Admin) */}
+        <Route path="/agent-visits" element={
+          <ProtectedRoute allowedRoles={['Agent', 'Admin']}>
+            <AgentVisits />
+          </ProtectedRoute>
+        } />
+
+        {/* --- ROUTES VISITEUR (ESPACE PERSONNEL) --- */}
+        <Route path="/mon-espace" element={
           <ProtectedRoute allowedRoles={['Visiteur']}>
+            <VisiteurDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* --- ROUTES PARTAGÉES (MODIFICATION / CRÉATION) --- */}
+        
+        {/* Cette route doit être accessible aux deux pour permettre la reprogrammation */}
+        <Route path="/create-visit" element={
+          <ProtectedRoute allowedRoles={['Admin','Agent', 'Visiteur']}>
             <CreateVisit />
           </ProtectedRoute>
         } />
-        <Route path="/reprogrammer" element={
+
+        <Route path="/visit-modal" element={
           <ProtectedRoute allowedRoles={['Visiteur']}>
-            <RescheduleVisit/>
+            <CreateVisitModal/>
           </ProtectedRoute>
         } />
-        <Route 
-  path="/profile" 
-  element={
-    <ProtectedRoute allowedRoles={['Admin', 'Agent', 'Visiteur']}>
-      <Profile /> {/* Assure-toi que le nom du composant est correct */}
-    </ProtectedRoute>
-  } 
-/>
+
+        {/* Route Profil Unique pour tous les rôles */}
         <Route path="/profile" element={
-          <ProtectedRoute allowedRoles={['Visiteur']}>
+          <ProtectedRoute allowedRoles={['Admin', 'Agent', 'Visiteur']}>
             <Profile />
           </ProtectedRoute>
         } />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordForm />} />
 
-        {/* Route Historique Visiteur */}
-        <Route path="/my-visits" element={
-          <ProtectedRoute allowedRoles={['Visiteur']}>
-            <UserVisits /> 
-          </ProtectedRoute>
-        } />
-
-        {/* Fallback */}
+        {/* --- FALLBACK (Redirection si route inconnue) --- */}
         <Route path="*" element={<Navigate to="/LandingPage" />} />
       </Routes>
     </Router>

@@ -11,10 +11,10 @@ const LandingPage = () => {
           
           <div className="flex items-center gap-2">
             <div className="bg-blue-600 text-white w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl">
-              AI
+              DE
             </div>
             <span className="text-xl font-bold tracking-tight">
-              AIGLE <span className="text-blue-600">INFORMATIQUE</span>
+              DAVILA <span className="text-blue-600">ENTREPRISE</span>
             </span>
           </div>
 
@@ -35,7 +35,7 @@ const LandingPage = () => {
 
             {/* BOUTON INSCRIPTION */}
             <Link 
-              to="/register" 
+              to="/Inscription" 
               className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md"
             >
               Inscription
@@ -77,10 +77,6 @@ const LandingPage = () => {
             >
               Essayer gratuitement
             </Link>
-            
-            <button className="bg-white border-2 border-slate-200 px-8 py-4 rounded-full font-bold text-lg hover:border-blue-600 transition">
-              Voir la démo
-            </button>
           </div>
         </div>
 

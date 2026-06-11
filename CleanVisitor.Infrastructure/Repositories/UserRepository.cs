@@ -67,14 +67,21 @@ return user.ToList();
         using var connection=new SqlConnection(_connectionString);
         return await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new {Id=id});
     }
-    public async Task<User?> GetByEmailAsync(string email)
-        {
+    public async Task<UserDto?> GetByEmailAsync(string email)
+{
+    string sql = @"
+        SELECT u.Id , u.Nom , u.Prenom , u.Email , u.Role , u.IsActive ,u.CreatedAt , u.IsDeleted, u.DeletedAt,
+               v.Id AS VisitorId
+        FROM [User] u
+        LEFT JOIN [Visitors] v ON u.Email = v.Email
+        WHERE u.Email = @Email AND u.IsDeleted = 0";
 
-                string sql = @"SELECT * FROM [User] WHERE [Email] = @Email AND IsDeleted=0";
-                using (var connection = new SqlConnection(_connectionString))
-                
-                return await connection.QueryFirstOrDefaultAsync<User?>(sql, new { email});
-            }
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        return await connection.QueryFirstOrDefaultAsync<UserDto?>(sql, new { Email = email });
+    }
+}
+
             public async Task<List<UserDto>> GetDeletedAsync()
          {
             var sql = @"SELECT * FROM [User]
@@ -133,5 +140,39 @@ return user.ToList();
         Console.WriteLine($"Erreur SQL: {ex.Message}");
         throw; 
     }
+}
+public async Task SaveResetTokenAsync(int userId, string token, DateTime expiry)
+{
+    var sql = @"UPDATE [User] 
+                SET ResetPasswordToken = @Token, 
+                    ResetPasswordTokenExpiry = @Expiry 
+                WHERE Id = @UserId";
+    using var connection = new SqlConnection(_connectionString);
+    await connection.ExecuteAsync(sql, new { Token = token, Expiry = expiry, UserId = userId });
+}
+
+public async Task<UserDto?> GetByResetTokenAsync(string email, string token)
+{
+
+    var sql = @"SELECT * FROM [User] 
+                WHERE Email = @Email 
+                AND ResetPasswordToken = @Token 
+                AND ResetPasswordTokenExpiry > GETDATE()
+                AND IsDeleted = 0";
+    using var connection = new SqlConnection(_connectionString);
+    var result = await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new { Email = email, Token = token });
+    
+    return result;
+}
+
+public async Task UpdatePasswordAsync(int userId, string newPasswordHash)
+{
+    var sql = @"UPDATE [User] 
+                SET PasswordHash = @PasswordHash, 
+                    ResetPasswordToken = NULL, 
+                    ResetPasswordTokenExpiry = NULL 
+                WHERE Id = @UserId";
+    using var connection = new SqlConnection(_connectionString);
+    await connection.ExecuteAsync(sql, new { PasswordHash = newPasswordHash, UserId = userId });
 }
 }

@@ -40,25 +40,29 @@ body: JSON.stringify({
     }
 
     const data = await response.json();
-    
-    const rawRole = data.user.role; 
-
+    // --- GESTION DU RÔLE ---
     const rolesMap = {
-        1: 'Admin', '1': 'Admin', 'Admin': 'Admin',
-        2: 'Agent', '2': 'Agent', 'Agent': 'Agent',
-        3: 'Visiteur', '3': 'Visiteur', 'Visiteur': 'Visiteur'
+        1: 'Admin', 'Admin': 'Admin',
+        2: 'Agent', 'Agent': 'Agent',
+        3: 'Visiteur', 'Visiteur': 'Visiteur'
     };
-
-    const roleText = rolesMap[rawRole] || 'Visiteur';
+    const roleText = rolesMap[data.user.role] || 'Visiteur';
+    console.log("🔍 data.user.role:", data.user.role, "| type:", typeof data.user.role);
 
     // --- STOCKAGE ---
     localStorage.setItem('token', data.token);
-    localStorage.setItem('userId', data.user.id);
     localStorage.setItem('userRole', roleText); 
     localStorage.setItem('userName', `${data.user.prenom} ${data.user.nom}`);
-    
-    // AJOUT CRUCIAL : On stocke l'objet user en JSON pour récupérer l'email plus tard
     localStorage.setItem('user', JSON.stringify(data.user));
+
+    // ID de connexion (Table Users)
+    localStorage.setItem('userId', data.user.id);
+
+    // ID Métier (Table Visitors)
+    // Vérifie si ton API renvoie 'visitorId' ou si l'ID visiteur est le même que le user.id
+    // Si ton backend est bien fait, il devrait te renvoyer data.user.visitorId
+    const vId = data.user.visitorId || data.user.idVisitor || data.user.id; 
+    localStorage.setItem('visitorId', vId);
 
     return { role: roleText, user: data.user };
 },

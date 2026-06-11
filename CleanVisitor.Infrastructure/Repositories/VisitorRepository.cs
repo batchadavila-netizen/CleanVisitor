@@ -29,10 +29,7 @@ public class VisitorRepository :IVisitorRepository
        public async Task<VisitorDto?> AddAsync(Visitor visitor)
 {
     var sql = @"
-        INSERT INTO Visitors (Nom, Telephone, Email, DateEnregistrement) 
-        OUTPUT INSERTED.*
-        VALUES (@Nom, @Telephone, @Email, @DateEnregistrement);
-        SELECT CAST(SCOPE_IDENTITY() as int);";
+        UPDATE [User] SET VisitorId = @VisitorId WHERE Email = @Email";
     using (var connection = new SqlConnection(_connectionString))
     {
          return await connection.QuerySingleAsync<VisitorDto?>(sql, visitor);
@@ -92,12 +89,12 @@ public async Task<VisitorVisitDto?> GetVisitorVisitAsync(int Id)
     VisitorVisitDto? visitorDto = null;
 
     var sql = @"
-        SELECT 
-            vi.Nom, vi.Telephone, vi.Email, vi.DateEnregistrement, 
-            v.Motif, v.Date, v.HeureDepart, v.HeureArriver, v.Statut, v.Service
-        FROM Visitors vi
-        INNER JOIN Visit v ON vi.Id = v.IdVisitor
-        WHERE vi.Id = @Id AND v.IsDeleted = 0"; // On n'oublie pas le IsDeleted
+    SELECT 
+        vi.Nom, vi.Telephone, vi.Email, vi.DateEnregistrement, 
+        v.Id, v.IdVisitor, v.Motif, v.Date, v.HeureDepart, v.HeureArriver, v.Statut, v.Service
+    FROM Visitors vi
+    INNER JOIN Visit v ON vi.Id = v.IdVisitor
+    WHERE vi.Id = @Id AND v.IsDeleted = 0";
 
     await connection.QueryAsync<VisitorVisitDto, VisitClonDto, VisitorVisitDto>(
         sql,
@@ -181,6 +178,20 @@ public async Task<int> RestoreAsync(int id)
         using var connection = new SqlConnection(_connectionString);
      return await connection.QueryFirstOrDefaultAsync<int>(sql, new { Id = id });
         }
+        public async Task LinkVisitorToUserAsync(string email, int visitorId)
+{
+    // 1. Ta requête SQL pour mettre à jour la colonne VisitorId de l'User via son Email
+    const string sql = @"
+        UPDATE [User]
+        SET VisitorId = @VisitorId 
+        WHERE Email = @Email";
+
+    using var connection = new SqlConnection(_connectionString);
+    await connection.ExecuteAsync(sql, new { 
+        VisitorId = visitorId, 
+        Email = email 
+    });
+}
         public async Task<VisitorDto?> GetDeletedByIdAsync(int id)
     {
 

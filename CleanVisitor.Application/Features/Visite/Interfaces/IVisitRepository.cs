@@ -18,8 +18,4 @@ Task<VisitDto?>GetByDateAsync(DateTime Date);
     Task<IEnumerable<VisitDetailsDto>> GetAllVisitsWithDetailsAsync();
     Task<List<VisitDto>> GetUserVisitsAsync(int userId);
     }
-    public interface IVisitNotificationService
-{
-    // On définit UNE SEULE méthode capable de tout envoyer
-    Task SendNotificationAsync(string userEmail, string message, string type);
-}
+    

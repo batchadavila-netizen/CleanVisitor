@@ -4,6 +4,7 @@ namespace CleanVisitor.Application.Features.Visite.Dtos;
 public class VisitDto
 {
     public int Id{get;set;}
+    public int IdVisitor { get; set; } 
     public string ?Nom_visitor{get;set;}
     public string ?Email_visitor{get;set;}
     public string Motif{get;set;}=string.Empty;

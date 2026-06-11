@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { visitorService } from '../services/visitorService';
-import CreateVisitModal from '../components/CreateVisitModal'; // Assure-toi que le chemin est correct
+import CreateVisit from '../components/CreateVisit'; // Assure-toi que le chemin est correct
 
 
 const VisitorsList = () => {
@@ -57,10 +57,10 @@ const VisitorsList = () => {
   }, []);
 
   // --- ACTIONS ---
-  const handleOpenVisitModal = (visitor) => {
-    setSelectedVisitor(visitor); // On mémorise quel visiteur a été cliqué
-    setIsVisitModalOpen(true);    // On ouvre la modale
-  };
+  // Supprime handleOpenVisitModal et remplace par :
+const handleOpenVisitModal = (visitor) => {
+    navigate('/create-visit', { state: { selectedVisitor: visitor } });
+};
 
   const handleDelete = async (id) => {
     if (window.confirm("Envoyer ce visiteur à la corbeille ?")) {
@@ -181,7 +181,12 @@ const VisitorsList = () => {
                             >
                               📅
                             </button>
-                            <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg">✏️</button>
+                            <button 
+                             onClick={() => navigate('/register-visitor', { state: { visitorToEdit: visitor } })}
+                             className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg"
+                              >
+                             ✏️
+                             </button>
                             <button onClick={() => handleDelete(visitor.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg">🗑️</button>
                           </>
                         ) : (
@@ -209,7 +214,7 @@ const VisitorsList = () => {
 
         {/* MODALE DE CRÉATION DE VISITE */}
         {isVisitModalOpen && (
-          <CreateVisitModal 
+          <CreateVisit
             onClose={() => setIsVisitModalOpen(false)} 
             onSuccess={() => {
               setIsVisitModalOpen(false);

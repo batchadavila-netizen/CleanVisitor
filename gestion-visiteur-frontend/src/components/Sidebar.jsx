@@ -22,7 +22,7 @@ const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
     },
     { 
       name: 'Mes Visites', 
-      path: '/my-visits', 
+      path: '/mon-espace', 
       icon: '📜', 
       roles: ['Visiteur'],
       showBadge: true // On active le badge pour ce menu
@@ -42,12 +42,12 @@ const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
       <div className="p-4 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="bg-blue-600 min-w-[40px] h-10 rounded-xl flex items-center justify-center text-white font-black">
-            AI
+            DE
           </div>
           {isOpen && (
             <div className="whitespace-nowrap">
-              <h2 className="text-white font-bold leading-tight">AIGLE</h2>
-              <p className="text-slate-500 text-[10px] uppercase font-bold">Informatique</p>
+              <h2 className="text-white font-bold leading-tight">DAVILA</h2>
+              <p className="text-slate-500 text-[10px] uppercase font-bold">Entreprise</p>
             </div>
           )}
         </div>
