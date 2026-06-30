@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { visitorService } from '../services/visitorService';
-import CreateVisit from '../components/CreateVisit'; // Assure-toi que le chemin est correct
+import CreateVisit from '../components/CreateVisit'; 
 
 
 const VisitorsList = () => {
@@ -15,7 +15,7 @@ const VisitorsList = () => {
   
   // --- ÉTATS DES DONNÉES ---
   const [visitors, setVisitors] = useState([]);
-  const [selectedVisitor, setSelectedVisitor] = useState(null); // Pour stocker le visiteur choisi
+  const [selectedVisitor, setSelectedVisitor] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
   
@@ -67,7 +67,7 @@ const handleOpenVisitModal = (visitor) => {
       try {
         await visitorService.delete(id);
         await loadVisitors();
-      } catch (err) {
+      } catch {
         alert("Erreur lors de la suppression");
       }
     }
@@ -77,7 +77,7 @@ const handleOpenVisitModal = (visitor) => {
     try {
       await visitorService.restore(id);
       await loadVisitors();
-    } catch (err) {
+    } catch  {
       alert("Erreur lors de la restauration");
     }
   };

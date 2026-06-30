@@ -28,12 +28,23 @@ public class VisitorRepository :IVisitorRepository
     
        public async Task<VisitorDto?> AddAsync(Visitor visitor)
 {
-    var sql = @"
-        UPDATE [User] SET VisitorId = @VisitorId WHERE Email = @Email";
-    using (var connection = new SqlConnection(_connectionString))
-    {
-         return await connection.QuerySingleAsync<VisitorDto?>(sql, visitor);
-    }
+    using var connection = new SqlConnection(_connectionString);
+    
+    // 1. Insérer le visiteur dans la table Visitors
+    var sqlInsert = @"
+        INSERT INTO Visitors (Nom, Telephone, Email, DateEnregistrement, DateCreation, IsDeleted)
+        VALUES (@Nom, @Telephone, @Email, @DateEnregistrement, GETDATE(), 0);
+        SELECT CAST(SCOPE_IDENTITY() AS int);";
+    
+    var newVisitorId = await connection.QuerySingleAsync<int>(sqlInsert, visitor);
+
+    // 2. Lier le visiteur à l'User via son Email
+    var sqlUpdate = @"UPDATE [User] SET VisitorId = @VisitorId WHERE Email = @Email";
+    await connection.ExecuteAsync(sqlUpdate, new { VisitorId = newVisitorId, Email = visitor.Email });
+
+    // 3. Retourner le visiteur créé
+    var sqlSelect = "SELECT * FROM Visitors WHERE Id = @Id";
+    return await connection.QueryFirstOrDefaultAsync<VisitorDto>(sqlSelect, new { Id = newVisitorId });
 }
 
         public async Task<Visitor?> GetByIdAsync(int id)

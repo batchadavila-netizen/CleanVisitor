@@ -3556,43 +3556,35 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\AIGLE INORMATIQUE\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "/home/tentchou/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\AIGLE INORMATIQUE\\Desktop\\CleanVisitor\\CleanVisitor.API\\CleanVisitor.API.csproj",
+      "projectUniqueName": "/home/tentchou/CleanVisitor/CleanVisitor.API/CleanVisitor.API.csproj",
       "projectName": "CleanVisitor.API",
-      "projectPath": "C:\\Users\\AIGLE INORMATIQUE\\Desktop\\CleanVisitor\\CleanVisitor.API\\CleanVisitor.API.csproj",
-      "packagesPath": "C:\\Users\\AIGLE INORMATIQUE\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\AIGLE INORMATIQUE\\Desktop\\CleanVisitor\\CleanVisitor.API\\obj\\",
+      "projectPath": "/home/tentchou/CleanVisitor/CleanVisitor.API/CleanVisitor.API.csproj",
+      "packagesPath": "/home/tentchou/.nuget/packages/",
+      "outputPath": "/home/tentchou/CleanVisitor/CleanVisitor.API/obj/",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\AIGLE INORMATIQUE\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/home/tentchou/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "C:\\Users\\AIGLE INORMATIQUE\\Desktop\\CleanVisitor\\CleanVisitor.Application\\CleanVisitor.Application.csproj": {
-              "projectPath": "C:\\Users\\AIGLE INORMATIQUE\\Desktop\\CleanVisitor\\CleanVisitor.Application\\CleanVisitor.Application.csproj"
+            "/home/tentchou/CleanVisitor/CleanVisitor.Application/CleanVisitor.Application.csproj": {
+              "projectPath": "/home/tentchou/CleanVisitor/CleanVisitor.Application/CleanVisitor.Application.csproj"
             },
-            "C:\\Users\\AIGLE INORMATIQUE\\Desktop\\CleanVisitor\\CleanVisitor.Infrastructure\\CleanVisitor.Infrastructure.csproj": {
-              "projectPath": "C:\\Users\\AIGLE INORMATIQUE\\Desktop\\CleanVisitor\\CleanVisitor.Infrastructure\\CleanVisitor.Infrastructure.csproj"
+            "/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/CleanVisitor.Infrastructure.csproj": {
+              "projectPath": "/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/CleanVisitor.Infrastructure.csproj"
             }
           }
         }
@@ -3607,7 +3599,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "9.0.300"
     },
     "frameworks": {
       "net9.0": {
@@ -3649,24 +3641,6 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "downloadDependencies": [
-          {
-            "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[9.0.12, 9.0.12]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Host.win-x64",
-            "version": "[9.0.12, 9.0.12]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Ref",
-            "version": "[9.0.12, 9.0.12]"
-          },
-          {
-            "name": "Microsoft.WindowsDesktop.App.Ref",
-            "version": "[9.0.12, 9.0.12]"
-          }
-        ],
         "frameworkReferences": {
           "Microsoft.AspNetCore.App": {
             "privateAssets": "none"
@@ -3675,7 +3649,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.200-preview.0.26103.119/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/home/tentchou/.dotnet/sdk/9.0.310/PortableRuntimeIdentifierGraph.json"
       }
     }
   },
@@ -3684,7 +3658,7 @@
       "code": "NU1903",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x",
+      "message": "Le package 'AutoMapper' 12.0.1 présente une vulnérabilité de gravité élevé(e) connue, https://github.com/advisories/GHSA-rvv3-g6hj-g44x.",
       "libraryId": "AutoMapper",
       "targetGraphs": [
         "net9.0"

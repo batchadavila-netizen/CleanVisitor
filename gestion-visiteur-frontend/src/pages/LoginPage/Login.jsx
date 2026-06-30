@@ -1,80 +1,84 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import LoginForm from '../../components/LoginForme/LoginForm';
-import ForgotPasswordForm from '../../components/MotDePasseOublier/ForgotPasswordForm'; 
+import ForgotPasswordForm from '../../components/MotDePasseOublier/ForgotPasswordForm';
 import { authService } from '../../services/authService';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState('login'); 
+  const [view, setView] = useState('login');
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleLoginSubmit = async (email, password) => {
     setErrorMessage('');
     try {
-        const data = await authService.login(email, password); 
-        
-        if (data) {
-            const rawRole = data.role; // C'est le rôle transformé par ton authService (Admin, Agent ou Visiteur)
+      const data = await authService.login(email, password);
 
-            console.log("Rôle final après traitement service :", rawRole);
+      if (data) {
+        const rawRole = data.role;
+        localStorage.setItem('userRole', rawRole);
 
-            // 1. On stocke le rôle tel quel (il est déjà bien formaté par authService)
-            localStorage.setItem('userRole', rawRole);
-
-            // 2. REDIRECTION BASÉE UNIQUEMENT SUR LE RÔLE
-            if (rawRole === 'Admin') {
-                navigate('/dashboard');
-            } 
-            else if (rawRole === 'Agent') {
-                navigate('/visitors');
-            } 
-            else {
-                // Pour les Visiteurs (rôle 3)
-                navigate('/mon-espace');
-            }
+        if (rawRole === 'Admin') {
+          navigate('/dashboard');
+        } else if (rawRole === 'Agent') {
+          navigate('/visitors');
+        } else {
+          navigate('/mon-espace');
         }
+      }
     } catch (err) {
-        setErrorMessage(err.message || "Identifiants incorrects.");
+      setErrorMessage(err.message || "Identifiants incorrects.");
     }
-};
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 border border-slate-100">
-        
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-block bg-blue-600 text-white w-12 h-12 rounded-xl mb-4 flex items-center justify-center font-bold text-2xl mx-auto">
-            AI
-          </Link>
-          <h2 className="text-3xl font-extrabold text-slate-900">
-            {view === 'login' ? 'Bon retour !' : 'Récupération'}
+    <div className="min-h-screen bg-white flex items-center justify-center p-10">
+      <div className="w-full max-w-[480px]">
+
+        <div className="text-center mb-9">
+          <div className="inline-flex items-center gap-2.5 mb-5">
+            <div className="w-[46px] h-[46px] bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
+              DE
+            </div>
+            <span className="text-lg font-semibold text-slate-900">Davila Entreprise</span>
+          </div>
+          <h2 className="text-[26px] font-semibold text-slate-900 mb-1.5">
+            {view === 'login' ? 'Bon retour' : 'Récupération'}
           </h2>
-          <p className="text-slate-500 mt-2">
+          <p className="text-sm text-slate-500">
             {view === 'login' ? 'Connectez-vous à votre espace' : 'Entrez votre email pour réinitialiser'}
           </p>
         </div>
 
         {errorMessage && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium animate-pulse">
+          <div className="mb-6 p-3.5 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium rounded">
             ⚠️ {errorMessage}
           </div>
         )}
 
         {view === 'login' ? (
-          <LoginForm 
-            onSubmitLogin={handleLoginSubmit} 
-            onForgot={() => setView('forgot')} 
+          <LoginForm
+            onSubmitLogin={handleLoginSubmit}
+            onForgot={() => setView('forgot')}
           />
         ) : (
           <ForgotPasswordForm onBack={() => setView('login')} />
         )}
 
         {view === 'login' && (
-          <p className="text-center mt-8 text-slate-600 text-sm">
-            Pas encore de compte ?{' '}
-            <Link to="/Inscription" className="font-bold text-blue-600 hover:underline">S'inscrire</Link>
-          </p>
+          <>
+            <div className="flex items-center gap-3.5 my-7">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-xs text-slate-400">ou</span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+            <p className="text-center text-[15px] text-slate-600">
+              Pas encore de compte ?{' '}
+              <Link to="/Inscription" className="font-semibold text-blue-600 hover:underline">
+                S'inscrire
+              </Link>
+            </p>
+          </>
         )}
       </div>
     </div>

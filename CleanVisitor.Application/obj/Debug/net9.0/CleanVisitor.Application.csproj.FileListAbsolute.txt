@@ -1,16 +1,32 @@
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\bin\Debug\net9.0\CleanVisitor.Application.deps.json
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\bin\Debug\net9.0\CleanVisitor.Application.dll
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\bin\Debug\net9.0\CleanVisitor.Application.pdb
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\bin\Debug\net9.0\CleanVisitor.Core.dll
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\bin\Debug\net9.0\CleanVisitor.Core.pdb
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.csproj.AssemblyReference.cache
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.AssemblyInfoInputs.cache
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.AssemblyInfo.cs
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.csproj.CoreCompileInputs.cache
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.sourcelink.json
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVis.8087458C.Up2Date
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.dll
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\refint\CleanVisitor.Application.dll
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\CleanVisitor.Application.pdb
-C:\Users\AIGLE INORMATIQUE\Desktop\CleanVisitor\CleanVisitor.Application\obj\Debug\net9.0\ref\CleanVisitor.Application.dll
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Application.deps.json
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Application.dll
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Application.pdb
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Core.dll
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Core.pdb
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.csproj.AssemblyReference.cache
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.AssemblyInfoInputs.cache
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.AssemblyInfo.cs
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.csproj.CoreCompileInputs.cache
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.sourcelink.json
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVis.8087458C.Up2Date
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.dll
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/refint/CleanVisitor.Application.dll
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.pdb
+C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/ref/CleanVisitor.Application.dll
+/home/tentchou/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Application.deps.json
+/home/tentchou/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Application.dll
+/home/tentchou/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Application.pdb
+/home/tentchou/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Core.dll
+/home/tentchou/CleanVisitor/CleanVisitor.Application/bin/Debug/net9.0/CleanVisitor.Core.pdb
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.csproj.AssemblyReference.cache
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.GeneratedMSBuildEditorConfig.editorconfig
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.AssemblyInfoInputs.cache
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.AssemblyInfo.cs
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.csproj.CoreCompileInputs.cache
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.sourcelink.json
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVis.8087458C.Up2Date
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.dll
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/refint/CleanVisitor.Application.dll
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/CleanVisitor.Application.pdb
+/home/tentchou/CleanVisitor/CleanVisitor.Application/obj/Debug/net9.0/ref/CleanVisitor.Application.dll

@@ -4,7 +4,6 @@ import { statsService } from '../services/statsService';
 import { visitService } from '../services/visitService';
 import { useNotification } from '../services/useNotification'; 
 import { Bell, Activity, Users, CheckCircle } from 'lucide-react';
-import Notification from '../components/Notification';
 
 const Dashboard = () => {
   const [data, setData] = useState(null);

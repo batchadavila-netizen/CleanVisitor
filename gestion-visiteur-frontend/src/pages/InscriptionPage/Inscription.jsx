@@ -8,7 +8,7 @@ const Inscription = () => {
         nom: '',
         prenom: '',
         email: '',
-        telephone: '', // 1. Ajout du champ dans l'état initial
+        telephone: '',
         password: '',
         role: '3' // Par défaut Visiteur
     });
@@ -16,85 +16,93 @@ const Inscription = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Le formData contient maintenant le téléphone
             await authService.Inscription(formData);
-            
             alert("Inscription réussie !");
-            navigate('/login'); 
+            navigate('/login');
         } catch (err) {
             console.error("Erreur d'inscription:", err);
-            alert(err.message); 
+            alert(err.message);
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-black text-slate-900">DAVILA ENTREPRISE</h1>
-                    <p className="text-slate-500">Créez votre compte visiteur</p>
+        <div className="min-h-screen bg-white flex items-center justify-center p-10">
+            <div className="w-full max-w-[480px]">
+
+                <div className="text-center mb-9">
+                    <div className="inline-flex items-center gap-2.5 mb-5">
+                        <div className="w-[46px] h-[46px] bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
+                            DE
+                        </div>
+                        <span className="text-lg font-semibold text-slate-900">Davila Entreprise</span>
+                    </div>
+                    <h2 className="text-[26px] font-semibold text-slate-900 mb-1.5">Créer un compte</h2>
+                    <p className="text-sm text-slate-500">Remplissez le formulaire pour vous inscrire</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit}>
+                    <div className="grid grid-cols-2 gap-4 mb-5">
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Nom</label>
-                            <input 
-                                type="text" 
+                            <label className="block text-sm font-medium text-slate-600 mb-2">Nom</label>
+                            <input
+                                type="text"
                                 required
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
-                                onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                                placeholder="Dupont"
+                                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-[15px] text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Prénom</label>
-                            <input 
-                                type="text" 
+                            <label className="block text-sm font-medium text-slate-600 mb-2">Prénom</label>
+                            <input
+                                type="text"
                                 required
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
-                                onChange={(e) => setFormData({...formData, prenom: e.target.value})}
+                                placeholder="Jean"
+                                className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-[15px] text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                                onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
                             />
                         </div>
                     </div>
 
-                    {/* 2. NOUVEAU : Champ Téléphone */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Téléphone</label>
-                        <input 
-                            type="tel" 
+                    <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-600 mb-2">Téléphone</label>
+                        <input
+                            type="tel"
                             required
                             placeholder="+237 6XX XX XX XX"
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
-                            onChange={(e) => setFormData({...formData, telephone: e.target.value})}
+                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-[15px] text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                            onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Email</label>
-                        <input 
-                            type="email" 
+                    <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-600 mb-2">Email</label>
+                        <input
+                            type="email"
                             required
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            placeholder="nom@exemple.com"
+                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-[15px] text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Mot de passe</label>
-                        <input 
-                            type="password" 
+                    <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-600 mb-2">Mot de passe</label>
+                        <input
+                            type="password"
                             required
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                            placeholder="••••••••"
+                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-[15px] text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Type de compte</label>
-                        <select 
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-slate-600 mb-2">Type de compte</label>
+                        <select
+                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-lg outline-none text-[15px] text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
                             value={formData.role}
-                            onChange={(e) => setFormData({...formData, role: e.target.value})}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                         >
                             <option value="3">Visiteur</option>
                             <option value="2">Agent</option>
@@ -102,16 +110,25 @@ const Inscription = () => {
                         </select>
                     </div>
 
-                    <button 
-                        type="submit" 
-                        className="w-full bg-blue-600 text-white font-bold p-4 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all mt-4"
+                    <button
+                        type="submit"
+                        className="w-full bg-blue-600 text-white font-semibold py-4 rounded-lg hover:bg-blue-700 transition-colors text-[16px]"
                     >
-                        S'inscrire
+                        Créer mon compte
                     </button>
                 </form>
 
-                <p className="text-center text-slate-500 mt-6 text-sm">
-                    Déjà un compte ? <Link to="/login" className="text-blue-600 font-bold">Se connecter</Link>
+                <div className="flex items-center gap-3.5 my-7">
+                    <div className="flex-1 h-px bg-slate-200" />
+                    <span className="text-xs text-slate-400">ou</span>
+                    <div className="flex-1 h-px bg-slate-200" />
+                </div>
+
+                <p className="text-center text-[15px] text-slate-600">
+                    Déjà un compte ?{' '}
+                    <Link to="/login" className="font-semibold text-blue-600 hover:underline">
+                        Se connecter
+                    </Link>
                 </p>
             </div>
         </div>
