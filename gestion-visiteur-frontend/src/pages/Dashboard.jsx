@@ -98,12 +98,6 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               <StatCard title="Visites Terminées" value={data?.completedVisitsCount} loading={loading} color="text-emerald-600" />
               <StatCard title="En attente" value={pendingCount} loading={loading} color="text-orange-500" pulse={pendingCount > 0} />
-              <StatCard 
-                title="Taux de conversion" 
-                value={data?.visitors?.day > 0 ? Math.round((data?.completedVisitsCount / data?.visitors?.day) * 100) + "%" : "100%"} 
-                loading={loading} 
-                color="text-purple-600" 
-              />
             </div>
 
             {/* SECTION LOGS DE NOTIFICATIONS CORRIGÉE */}
