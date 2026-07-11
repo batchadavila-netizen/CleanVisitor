@@ -37,12 +37,21 @@ builder.Services.AddEndpointsApiExplorer();
 // --- 2. CONFIGURATION CORS (UNE SEULE FOIS) ---
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CleanVisitorPolicy", policy =>
+    // Politique pour les requêtes HTTP normales (React + Flutter)
+    options.AddPolicy("ApiPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // Ton frontend React
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+
+    // Politique pour SignalR (exige AllowCredentials donc origine explicite)
+    options.AddPolicy("SignalRPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") // React uniquement
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Obligatoire pour SignalR
+              .AllowCredentials();
     });
 });
 
@@ -127,7 +136,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // 1. CORS en premier
-app.UseCors("CleanVisitorPolicy");
+app.UseCors("ApiPolicy");
 
 // 2. Routing
 app.UseRouting();
@@ -139,5 +148,8 @@ app.UseAuthorization();
 // 4. Endpoints
 app.MapControllers();
 app.MapHub<VisitHub>("/visitHub");
+
+// 🔥 SignalR avec sa propre politique CORS
+app.MapHub<VisitHub>("/visitHub").RequireCors("SignalRPolicy");
 
 app.Run();
