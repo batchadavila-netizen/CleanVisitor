@@ -15,7 +15,7 @@ const VisitorsList = () => {
   
   // --- ÉTATS DES DONNÉES ---
   const [visitors, setVisitors] = useState([]);
-  const [selectedVisitor, setSelectedVisitor] = useState(null);
+  const [selectedVisitor] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
   

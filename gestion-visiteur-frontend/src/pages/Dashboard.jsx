@@ -2,16 +2,19 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { statsService } from '../services/statsService';
 import { visitService } from '../services/visitService';
-import { useNotification } from '../services/useNotification'; 
-import { Bell, Activity, Users, CheckCircle } from 'lucide-react';
+import { useNotification } from '../services/useNotification';
+import { Bell, Activity, Users, CheckCircleIcon, Clock } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [weeklyVisits, setWeeklyVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Utilisation du Hook : On passe 'Admin' pour déclencher la route /api/Notifications/admin
   const { notifications, loading: loadingNotifs } = useNotification(null, 'Admin');
 
   useEffect(() => {
@@ -19,9 +22,7 @@ const Dashboard = () => {
       try {
         setLoading(true);
 
-        // 1. Récupération des visites
         const visits = await visitService.getAll();
-        // Gestion robuste du format .NET ($values)
         const visitsArray = Array.isArray(visits) ? visits : (visits?.$values || []);
 
         const completedVisits = visitsArray.filter(v => {
@@ -36,7 +37,27 @@ const Dashboard = () => {
 
         setPendingCount(pending);
 
-        // 2. Stats via statsService
+        // Construction du graphique des 7 derniers jours
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return d;
+        });
+
+        const dayLabels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+        const weekly = last7Days.map(day => {
+          const dayStr = day.toDateString();
+          const count = visitsArray.filter(v => {
+            const visitDate = v.date || v.Date;
+            if (!visitDate) return false;
+            return new Date(visitDate).toDateString() === dayStr;
+          }).length;
+          return { name: dayLabels[day.getDay()], visites: count };
+        });
+
+        setWeeklyVisits(weekly);
+
         const stats = await statsService.getDashboardStats();
 
         setData({
@@ -56,107 +77,112 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
-        pendingVisits={pendingCount} 
+      <Sidebar
+        isOpen={isSidebarOpen}
+        toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        pendingVisits={pendingCount}
       />
 
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'pl-64' : 'pl-20'}`}>
         <header className="bg-white h-16 border-b border-slate-200 flex items-center px-8 justify-between sticky top-0 z-10">
           <div className="flex items-center gap-2">
-             <Activity className="text-blue-600" size={20} />
-             <h2 className="font-bold text-slate-800">Tableau de Bord Administratif</h2>
+            <Activity className="text-blue-600" size={20} />
+            <h2 className="font-semibold text-slate-800">Tableau de Bord Administratif</h2>
           </div>
           <div className="flex items-center gap-4">
-             <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-tighter">Accès Total</span>
+            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-tight">Accès Total</span>
           </div>
         </header>
 
-        <main className="p-10">
-          <div className="max-w-7xl mx-auto">
-            
-            <div className="mb-8">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Statistiques Globales</h1>
-              <p className="text-slate-500">Surveillance des flux de visiteurs et des notifications.</p>
+        <main className="p-8">
+          <div className="max-w-6xl mx-auto">
+
+            <div className="mb-6">
+              <h1 className="text-2xl font-semibold text-slate-900">Statistiques globales</h1>
+              <p className="text-sm text-slate-500">Surveillance des flux de visiteurs et des notifications</p>
             </div>
 
-            {/* CARDS STATISTIQUES */}
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                <Users size={14}/> Visiteurs Uniques
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            {/* SECTION VISITEURS */}
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={14} className="text-slate-500" />
+              <span className="text-[13px] font-medium text-slate-500">Visiteurs uniques</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
               <StatCard title="Aujourd'hui" value={data?.visitors?.day} loading={loading} color="text-blue-600" />
-              <StatCard title="Ce Mois" value={data?.visitors?.month} loading={loading} />
-              <StatCard title="Cette Année" value={data?.visitors?.year} loading={loading} />
+              <StatCard title="Ce mois" value={data?.visitors?.month} loading={loading} />
+              <StatCard title="Cette année" value={data?.visitors?.year} loading={loading} />
             </div>
 
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                <CheckCircle size={14}/> Flux des Rendez-vous
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <StatCard title="Visites Terminées" value={data?.completedVisitsCount} loading={loading} color="text-emerald-600" />
+            {/* SECTION VISITES */}
+            <div className="flex items-center gap-2 mb-3">
+              <Clock size={14} className="text-slate-500" />
+              <span className="text-[13px] font-medium text-slate-500">Flux des visites</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+              <StatCard title="Terminées" value={data?.completedVisitsCount} loading={loading} color="text-emerald-600" />
               <StatCard title="En attente" value={pendingCount} loading={loading} color="text-orange-500" pulse={pendingCount > 0} />
-              <StatCard 
-                title="Taux de conversion" 
-                value={data?.visitors?.day > 0 ? Math.round((data?.completedVisitsCount / data?.visitors?.day) * 100) + "%" : "100%"} 
-                loading={loading} 
-                color="text-purple-600" 
-              />
             </div>
 
-            {/* SECTION LOGS DE NOTIFICATIONS CORRIGÉE */}
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8">
-                <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-50 text-red-600 rounded-lg"><Bell size={20}/></div>
-                        <h3 className="font-bold text-slate-800 text-lg">Historique des Notifications</h3>
-                    </div>
-                </div>
-                
-                <div className="space-y-4">
-                    {loadingNotifs ? (
-                        <div className="py-10 text-center text-slate-400 animate-pulse italic">Récupération des logs...</div>
-                    ) : (
-                        notifications.slice(0, 10).map(notif => {
-                            // SÉCURITÉ : On gère les deux types de casse (Pascal et camel)
-                            const message = notif.message || notif.Message;
-                            const type = notif.type || notif.Type || 'SYSTEM';
-                            const date = notif.dateEnvoi || notif.DateEnvoi;
-                            const id = notif.id || notif.Id;
+            {/* GRAPHIQUE */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+              <p className="text-sm font-medium text-slate-800 mb-4">Visites des 7 derniers jours</p>
+              <div style={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer>
+                  <BarChart data={weeklyVisits}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} />
+                    <Bar dataKey="visites" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-                            return (
-                                <div key={id} className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all group">
-                                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-xs ${type.includes('VISIT') ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                        {type.charAt(0)}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm text-slate-700 font-semibold group-hover:text-blue-700 transition-colors">
-                                            {message}
-                                        </p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-                                            {date ? new Date(date).toLocaleString('fr-FR', { 
-                                                day: '2-digit', 
-                                                month: 'long', 
-                                                hour: '2-digit', 
-                                                minute: '2-digit' 
-                                            }) : "Date inconnue"}
-                                        </p>
-                                    </div>
-                                    <div className="text-[9px] font-black tracking-tighter px-2 py-1 bg-slate-100 text-slate-500 rounded-md group-hover:bg-blue-600 group-hover:text-white transition-all">
-                                        {type}
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                    
-                    {!loadingNotifs && notifications.length === 0 && (
-                        <div className="py-10 text-center text-slate-400 text-sm italic">
-                            Aucune notification enregistrée dans le système.
+            {/* NOTIFICATIONS */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Bell size={18} className="text-slate-500" />
+                <h3 className="font-medium text-slate-800 text-[15px]">Historique des notifications</h3>
+              </div>
+
+              <div>
+                {loadingNotifs ? (
+                  <div className="py-10 text-center text-slate-400 italic text-sm">Récupération des logs...</div>
+                ) : (
+                  notifications.slice(0, 10).map(notif => {
+                    const message = notif.message || notif.Message;
+                    const type = notif.type || notif.Type || 'SYSTEM';
+                    const date = notif.dateEnvoi || notif.DateEnvoi;
+                    const id = notif.id || notif.Id;
+
+                    return (
+                      <div key={id} className="flex items-start gap-3 py-3 border-t border-slate-100 first:border-t-0">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center font-medium text-xs flex-shrink-0 ${type.includes('VISIT') ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                          {type.charAt(0)}
                         </div>
-                    )}
-                </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-slate-700">{message}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {date ? new Date(date).toLocaleString('fr-FR', {
+                              day: '2-digit',
+                              month: 'long',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : "Date inconnue"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+
+                {!loadingNotifs && notifications.length === 0 && (
+                  <div className="py-10 text-center text-slate-400 text-sm italic">
+                    Aucune notification enregistrée dans le système.
+                  </div>
+                )}
+              </div>
             </div>
 
           </div>
@@ -167,18 +193,15 @@ const Dashboard = () => {
 };
 
 const StatCard = ({ title, value, loading, color = "text-slate-900", pulse = false }) => (
-  <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 flex justify-between items-center transition-all hover:scale-[1.02] hover:shadow-lg group">
+  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center relative">
     <div>
-      <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] mb-2 group-hover:text-blue-500 transition-colors">{title}</p>
-      <span className={`text-4xl font-black ${color} tracking-tighter`}>
+      <p className="text-slate-500 text-xs mb-2">{title}</p>
+      <span className={`text-2xl font-semibold ${color}`}>
         {loading ? "..." : value ?? 0}
       </span>
     </div>
     {pulse && (
-      <div className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
-      </div>
+      <span className="absolute top-4 right-4 w-2 h-2 rounded-full bg-orange-500"></span>
     )}
   </div>
 );

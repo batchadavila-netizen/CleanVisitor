@@ -15,8 +15,6 @@ public class EmailService : IEmailService
     {
         _settings = settings.Value;
     }
-
-    // Le paramètre replyToEmail est optionnel (valeur par défaut = null)
     public async Task SendEmailAsync(string to, string subject, string body, string? replyToEmail = null)
     {
         var email = new MimeMessage();
