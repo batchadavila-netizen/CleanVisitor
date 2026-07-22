@@ -108,6 +108,17 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    filter: invert(29%) sepia(98%) saturate(1500%) hue-rotate(210deg) brightness(95%);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

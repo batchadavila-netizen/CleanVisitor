@@ -13,7 +13,7 @@ import VisiteurDashboard from './pages/VisiteurDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminValidation from './components/AdminValidation'; 
 import CreateVisit from './components/CreateVisit'; 
-import AgentVisits from './components/AgentVisits';
+// import AgentVisits from './components/AgentVisits';
 import Profile from './components/Profile';
 import CreateVisitModal from './components/CreateVisitModal';
 import ResetPasswordPage from './components/MotDePasseOublier/ResetPasswordPage';
@@ -38,7 +38,7 @@ function App() {
 
         {/* --- ROUTES ADMIN & AGENT --- */}
         <Route path="/dashboard" element={
-          <ProtectedRoute allowedRoles={['Admin']}>
+          <ProtectedRoute allowedRoles={['Admin', 'Agent']}>
             <Dashboard />
           </ProtectedRoute>
         } />
@@ -52,13 +52,6 @@ function App() {
         <Route path="/validate-visits" element={
           <ProtectedRoute allowedRoles={['Admin']}>
             <AdminValidation />
-          </ProtectedRoute>
-        } />
-
-        {/* Interface pour l'Agent d'accueil (ou Admin) */}
-        <Route path="/agent-visits" element={
-          <ProtectedRoute allowedRoles={['Agent', 'Admin']}>
-            <AgentVisits />
           </ProtectedRoute>
         } />
 

@@ -11,7 +11,7 @@ const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
   const userName = localStorage.getItem('userName') || 'Utilisateur';
 
   const menuItems = [
-    { name: 'Tableau de bord', path: '/dashboard', icon: '📊', roles: ['Admin'] },
+    { name: 'Tableau de bord', path: '/dashboard', icon: '📊', roles: ['Admin' , 'Agent'] },
     { name: 'Liste Visiteurs', path: '/visitors', icon: '👥', roles: ['Admin', 'Agent'] },
     { 
       name: 'Valider Visites', 

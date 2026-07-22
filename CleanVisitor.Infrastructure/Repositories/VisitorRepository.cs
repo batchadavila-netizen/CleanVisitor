@@ -47,14 +47,18 @@ public class VisitorRepository :IVisitorRepository
     return await connection.QueryFirstOrDefaultAsync<VisitorDto>(sqlSelect, new { Id = newVisitorId });
 }
 
-        public async Task<Visitor?> GetByIdAsync(int id)
-        {
+       public async Task<Visitor?> GetByIdAsync(int id)
+{
+    string sql = @"
+        SELECT v.Id, v.Nom, v.Telephone, v.Email, v.DateEnregistrement, v.IsDeleted, v.DeletedAt,
+               u.Prenom
+        FROM [Visitors] v
+        LEFT JOIN [User] u ON u.VisitorId = v.Id
+        WHERE v.Id = @Id AND v.IsDeleted = 0";
 
-                string sql = @"SELECT * FROM [Visitors] WHERE [Id] = @Id AND IsDeleted=0";
-                using (var connection = new SqlConnection(_connectionString))
-                
-                return await connection.QueryFirstOrDefaultAsync<Visitor?>(sql, new { Id = id });
-            }
+    using var connection = new SqlConnection(_connectionString);
+    return await connection.QueryFirstOrDefaultAsync<Visitor>(sql, new { Id = id });
+}
         
        public async Task<List<Visitor>> GetAllAsync()
 {
@@ -83,15 +87,74 @@ public class VisitorRepository :IVisitorRepository
     // 2. On retourne true si au moins une ligne a été mise à jour
     return rowsAffected > 0;
 }
-    public async Task<VisitorDto?>UpdateAsync(Visitor visitor)
+   public async Task<VisitorDto?> UpdateAsync(Visitor visitor)
+{
+    using var connection = new SqlConnection(_connectionString);
+
+    // 1. Mise à jour dynamique de Visitors
+    var visitorUpdates = new List<string>();
+    var parameters = new DynamicParameters();
+    parameters.Add("Id", visitor.Id);
+
+    if (!string.IsNullOrEmpty(visitor.Nom))
     {
-        using var connection = new SqlConnection(_connectionString);
-        {
-            string sql= @"UPDATE VISITORS SET Nom=@Nom, Telephone=@Telephone, Email=@Email,  WHERE Id=@Id";
-            return await connection.QueryFirstOrDefaultAsync<VisitorDto?>(sql, visitor);
-            
-        }
+        visitorUpdates.Add("Nom = @Nom");
+        parameters.Add("Nom", visitor.Nom);
     }
+    if (!string.IsNullOrEmpty(visitor.Telephone))
+    {
+        visitorUpdates.Add("Telephone = @Telephone");
+        parameters.Add("Telephone", visitor.Telephone);
+    }
+    if (!string.IsNullOrEmpty(visitor.Email))
+    {
+        visitorUpdates.Add("Email = @Email");
+        parameters.Add("Email", visitor.Email);
+    }
+
+    if (visitorUpdates.Count > 0)
+    {
+        string sqlVisitor = $"UPDATE Visitors SET {string.Join(", ", visitorUpdates)} WHERE Id = @Id";
+        await connection.ExecuteAsync(sqlVisitor, parameters);
+    }
+
+    // 2. Mise à jour dynamique de [User]
+    var userUpdates = new List<string>();
+    var userParameters = new DynamicParameters();
+    userParameters.Add("Id", visitor.Id);
+
+    if (!string.IsNullOrEmpty(visitor.Email))
+    {
+        userUpdates.Add("Email = @Email");
+        userParameters.Add("Email", visitor.Email);
+    }
+    if (!string.IsNullOrEmpty(visitor.Prenom))
+    {
+        userUpdates.Add("Prenom = @Prenom");
+        userParameters.Add("Prenom", visitor.Prenom);
+    }
+    if (!string.IsNullOrEmpty(visitor.Nom))
+    {
+        userUpdates.Add("Nom = @Nom");
+        userParameters.Add("Nom", visitor.Nom);
+    }
+    if (!string.IsNullOrEmpty(visitor.Password))
+    {
+        // Hash du mot de passe avant sauvegarde
+        userUpdates.Add("PasswordHash = @PasswordHash");
+        userParameters.Add("PasswordHash", BCrypt.Net.BCrypt.HashPassword(visitor.Password));
+    }
+
+    if (userUpdates.Count > 0)
+    {
+        string sqlUser = $"UPDATE [User] SET {string.Join(", ", userUpdates)} WHERE VisitorId = @Id";
+        await connection.ExecuteAsync(sqlUser, userParameters);
+    }
+
+    // 3. Retourner le visiteur mis à jour
+    var sqlSelect = "SELECT * FROM Visitors WHERE Id = @Id";
+    return await connection.QueryFirstOrDefaultAsync<VisitorDto>(sqlSelect, new { visitor.Id });
+}
 public async Task<VisitorVisitDto?> GetVisitorVisitAsync(int Id)
 {
     using var connection = new SqlConnection(_connectionString);

@@ -41,5 +41,13 @@ getByEmail: async (email) => {
   // On utilise API_URL pour rester cohérent avec le port 5283
   const response = await axios.get(`http://localhost:5283/api/User/email/${email}`);
   return response.data;
+},
+update: async (id, data) => {
+    try {
+        const response = await axios.put(`${API_URL}`, { ...data, id });
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || "Erreur de mise à jour");
+    }
 }
 };

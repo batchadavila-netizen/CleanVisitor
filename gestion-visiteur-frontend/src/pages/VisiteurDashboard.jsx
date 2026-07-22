@@ -12,17 +12,13 @@ import { History, Clock, Calendar, ChevronRight, Plus, RefreshCw, Bell } from 'l
 const VisiteurDashboard = () => {
   const navigate = useNavigate();
   
-  // 1. Récupération des données utilisateur
-  const visitorId = localStorage.getItem('userId');
-  const userNom = localStorage.getItem('userNom') || 'Visiteur';
+  const visitorId = localStorage.getItem('visitorId');
+  const userNom = localStorage.getItem('userNom') || localStorage.getItem('userName') || 'Visiteur';
   const userEmail = localStorage.getItem('userEmail');
+  const userId = localStorage.getItem('userId');       // Pour les visites
 
-  // 2. Utilisation du Hook de notifications
-  // On récupère notifications, loading et la fonction refresh
-  console.log("Type de visitorId:", typeof visitorId, "Valeur:", visitorId);
   const { notifications, loading: loadingNotifs, refresh: refreshNotifs } = useNotification(Number(visitorId), 'Visiteur');
 
-  // 3. États du dashboard
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,7 +28,6 @@ const VisiteurDashboard = () => {
 
   const enumToCode = { "En_attente": 1, "Accepter": 2, "Terminee": 3, "Annulé": 4 };
 
-  // Logique de calcul du statut effectif
   const getEffectiveStatus = (v) => {
     const s = v.statut || v.Statut;
     const code = enumToCode[s] ?? Number(s);
@@ -40,7 +35,6 @@ const VisiteurDashboard = () => {
     const heureStr = v.heureArriver || v.HeureArriver || "00:00";
     const visitDateTime = dateStr ? new Date(`${dateStr}T${heureStr}`) : null;
     const now = new Date();
-
     if (visitDateTime && visitDateTime < now) {
       if (code === 2) return 3;
       if (code === 1) return 4;
@@ -64,9 +58,19 @@ const VisiteurDashboard = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const response = await visitService.getVisitorVisit(visitorId);
+      const userId = localStorage.getItem('userId');
+     const response = await visitService.getVisitorVisit(userId);
+      console.log('🔍 response API:', response);
+      
       const laListe = response.listVisitClon?.$values || response.$values || (Array.isArray(response) ? response : []);
-      setVisits(laListe);
+      console.log('🔍 laListe:', laListe);
+      
+      const sorted = [...laListe].sort((a, b) => {
+        const dateA = new Date(a.date || a.Date || 0);
+        const dateB = new Date(b.date || b.Date || 0);
+        return dateB - dateA;
+      });
+      setVisits(sorted);
     } catch (error) {
       console.error("Erreur chargement visites:", error);
       toast.error("Erreur de récupération des visites");
@@ -75,25 +79,28 @@ const VisiteurDashboard = () => {
     }
   };
 
-  // 4. Gestion du temps réel via SignalR
   useEffect(() => {
     loadData();
     startSignalRConnection();
-
     const handleReceiveUpdate = (data) => {
-      // Vérification flexible de l'ID (chaîne ou nombre)
       if (data.email === userEmail || Number(data.visitorId) === Number(visitorId)) {
         toast.success(data.message || data.Message, { icon: '🔔', duration: 5000 });
         loadData();
         if (refreshNotifs) refreshNotifs();
       }
     };
-
     connection.on("ReceiveStatusUpdate", handleReceiveUpdate);
     return () => connection.off("ReceiveStatusUpdate", handleReceiveUpdate);
   }, [visitorId, userEmail, refreshNotifs]);
 
   const pendingCount = visits.filter(v => getStatusLabel(getEffectiveStatus(v)).includes('attente')).length;
+  const recentVisits = visits.slice(0, 10);
+  
+
+  const handleOpenDetail = (v) => {
+    setSelectedVisit(v);
+    setIsDetailModalOpen(true);
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">
@@ -121,74 +128,90 @@ const VisiteurDashboard = () => {
           </button>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <StatCard icon={<History size={32}/>} title="Total Visites" value={visits.length} color="text-blue-600" bgColor="bg-blue-50" />
-            <StatCard icon={<Clock size={32}/>} title="En Attente" value={pendingCount} color="text-amber-600" bgColor="bg-amber-50" />
-
-            <div className="md:col-span-2 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-800">Mes Demandes</h3>
-                    <RefreshCw 
-                      size={18} 
-                      className={`text-slate-300 cursor-pointer ${loading ? 'animate-spin' : ''}`} 
-                      onClick={() => { loadData(); if(refreshNotifs) refreshNotifs(); }} 
-                    />
-                </div>
-                <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto">
-                    {loading ? (
-                      <div className="p-10 text-center text-slate-400 italic">Chargement des visites...</div>
-                    ) : visits.length === 0 ? (
-                      <div className="p-10 text-center text-slate-400">Aucune visite enregistrée.</div>
-                    ) : visits.map((v, index) => (
-                        <div key={v.id || v.Id || index} className="p-6 hover:bg-slate-50/50 flex items-center justify-between group transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all"><Calendar size={20} /></div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800">{v.motif || v.Motif || 'Visite standard'}</h4>
-                                    <p className="text-xs text-slate-400">
-                                      {(v.date || v.Date) ? new Date(v.date || v.Date).toLocaleDateString('fr-FR') : '--'} à {v.heureArriver || v.HeureArriver || '--:--'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter border ${getStatusColor(getStatusLabel(getEffectiveStatus(v)))}`}>
-                                    {getStatusLabel(getEffectiveStatus(v))}
-                                </div>
-                                <button onClick={() => { setSelectedVisit(v); setIsDetailModalOpen(true); }} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ChevronRight size={20}/></button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-          </div>
-
-          {/* SECTION NOTIFICATIONS - RENDU ROBUSTE */}
-          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-red-50 text-red-500 rounded-lg"><Bell size={20}/></div>
-                <h3 className="text-xl font-bold text-slate-800">Notifications</h3>
-            </div>
-            <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                {loadingNotifs ? (
-                  <p className="text-slate-400 text-sm text-center">Mise à jour...</p>
-                ) : !notifications || notifications.length === 0 ? (
-                    <p className="text-slate-400 text-sm text-center py-10 italic">Aucune notification</p>
-                ) : (
-                    notifications.map((n, index) => (
-  <div key={n.id || index} className="p-3 border-b hover:bg-gray-50">
-    <p className="text-sm text-gray-800">{n.message || n.Message}</p>
-    <span className="text-[10px] text-gray-500">
-      {new Date(n.dateEnvoi || n.DateEnvoi).toLocaleString()}
-    </span>
-  </div>
-))
-                )}
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-6 mb-8">
+          <StatCard icon={<History size={32}/>} title="Total Visites" value={visits.length} color="text-blue-600" bgColor="bg-blue-50" />
+          <StatCard icon={<Clock size={32}/>} title="En Attente" value={pendingCount} color="text-amber-600" bgColor="bg-amber-50" />
         </div>
 
-        {/* MODALS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+          {/* MES DEMANDES */}
+          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-slate-800">Mes Demandes</h3>
+              <div className="flex items-center gap-3">
+                {visits.length > 10 && (
+                  <span className="text-xs text-slate-400 font-bold">10 / {visits.length}</span>
+                )}
+                <RefreshCw 
+                  size={18} 
+                  className={`text-slate-300 cursor-pointer ${loading ? 'animate-spin' : ''}`} 
+                  onClick={() => { loadData(); if(refreshNotifs) refreshNotifs(); }} 
+                />
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-50">
+              {loading ? (
+                <div className="p-10 text-center text-slate-400 italic">Chargement des visites...</div>
+              ) : recentVisits.length === 0 ? (
+                <div className="p-10 text-center text-slate-400">Aucune visite enregistrée.</div>
+              ) : recentVisits.map((v, index) => (
+                <div
+                  key={v.id || v.Id || index}
+                  className="p-6 hover:bg-slate-50/50 flex items-center justify-between group transition-all cursor-pointer"
+                  onClick={() => handleOpenDetail(v)}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
+                      <Calendar size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-800 truncate">{v.motif || v.Motif || 'Visite standard'}</h4>
+                      <p className="text-xs text-slate-400">
+                        {(v.date || v.Date) ? new Date(v.date || v.Date).toLocaleDateString('fr-FR') : '--'} à {v.heureArriver || v.HeureArriver || '--:--'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter border ${getStatusColor(getStatusLabel(getEffectiveStatus(v)))}`}>
+                      {getStatusLabel(getEffectiveStatus(v))}
+                    </div>
+                    <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-all"/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* NOTIFICATIONS */}
+          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-8 border-b border-slate-50 flex items-center gap-3">
+              <div className="p-2 bg-red-50 text-red-500 rounded-lg"><Bell size={20}/></div>
+              <h3 className="text-xl font-bold text-slate-800">Notifications</h3>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {loadingNotifs ? (
+                <div className="p-10 text-center text-slate-400 italic">Mise à jour...</div>
+              ) : !notifications || notifications.length === 0 ? (
+                <div className="p-10 text-center text-slate-400 italic">Aucune notification</div>
+              ) : (
+                notifications.slice(0, 10).map((n, index) => (
+                  <div key={n.id || index} className="p-6 hover:bg-slate-50/50 transition-all">
+                    <p className="text-sm font-semibold text-slate-700">{n.message || n.Message}</p>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase mt-1 block">
+                      {new Date(n.dateEnvoi || n.DateEnvoi).toLocaleString('fr-FR', {
+                        day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </div>
+
         {isDetailModalOpen && (
           <DetailVisitModal 
             visit={selectedVisit} 
@@ -207,16 +230,16 @@ const VisiteurDashboard = () => {
       </main>
     </div>
   );
-}
+};
 
 const StatCard = ({ icon, title, value, color, bgColor }) => (
-  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-6">
-    <div className={`w-16 h-16 ${bgColor} ${color} rounded-2xl flex items-center justify-center`}>
+  <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-4 h-32">
+    <div className={`w-14 h-14 ${bgColor} ${color} rounded-2xl flex items-center justify-center shrink-0`}>
       {icon}
     </div>
-    <div>
-      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{title}</p>
-      <h3 className="text-4xl font-black text-slate-800">{value}</h3>
+    <div className="min-w-0">
+      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest truncate">{title}</p>
+      <h3 className="text-3xl font-black text-slate-800">{value}</h3>
     </div>
   </div>
 );

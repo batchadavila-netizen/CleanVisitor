@@ -153,7 +153,7 @@ const AdminValidation = () => {
         <header className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
             <h1 className="text-xl font-black uppercase tracking-tighter text-slate-800">Gestion des Visites</h1>
-            <p className="text-slate-400 text-xs font-medium">Validation en temps réel</p>
+            <p className="text-slate-400 text-xs font-medium">Validation des visites </p>
           </div>
           <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex gap-1">
             <button
@@ -203,7 +203,7 @@ const AdminValidation = () => {
                   <th className="px-5 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Date / Heure</th>
                   <th className="px-5 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Service</th>
                   <th className="px-5 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Statut</th>
-                  <th className="px-5 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
+                  <th className="px-5 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">

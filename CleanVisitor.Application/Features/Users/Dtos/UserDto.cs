@@ -11,7 +11,5 @@ public class UserDto
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
-
-    // 🔥 Ajoute ce champ
     public int VisitorId { get; set; }
 }

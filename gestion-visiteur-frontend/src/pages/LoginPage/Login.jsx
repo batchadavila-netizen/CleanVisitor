@@ -18,11 +18,11 @@ const Login = () => {
         const rawRole = data.role;
         localStorage.setItem('userRole', rawRole);
 
-        if (rawRole === 'Admin') {
-          navigate('/dashboard');
-        } else if (rawRole === 'Agent') {
-          navigate('/visitors');
-        } else {
+        // 🟢 Utilisation du OU (||)
+if (rawRole === 'Admin' || rawRole === 'Agent') {
+  navigate('/dashboard');
+}
+        else {
           navigate('/mon-espace');
         }
       }

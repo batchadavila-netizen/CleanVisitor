@@ -70,10 +70,9 @@ return user.ToList();
     public async Task<UserDto?> GetByEmailAsync(string email)
 {
     string sql = @"
-        SELECT u.Id , u.Nom , u.Prenom , u.Email , u.Role , u.IsActive ,u.CreatedAt , u.IsDeleted, u.DeletedAt,
-               v.Id AS VisitorId
+        SELECT u.Id, u.Nom, u.Prenom, u.Email, u.Role, u.IsActive, u.CreatedAt, u.IsDeleted, u.DeletedAt,
+               u.VisitorId
         FROM [User] u
-        LEFT JOIN [Visitors] v ON u.Email = v.Email
         WHERE u.Email = @Email AND u.IsDeleted = 0";
 
     using (var connection = new SqlConnection(_connectionString))

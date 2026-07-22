@@ -4,7 +4,6 @@ import Sidebar from '../components/Sidebar';
 import { visitorService } from '../services/visitorService';
 import CreateVisit from '../components/CreateVisit'; 
 
-
 const VisitorsList = () => {
   // --- ÉTATS DE L'INTERFACE ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -12,13 +11,11 @@ const VisitorsList = () => {
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
   const navigate = useNavigate();
   
-  
   // --- ÉTATS DES DONNÉES ---
   const [visitors, setVisitors] = useState([]);
   const [selectedVisitor] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
-  
 
   // --- CHARGEMENT DES DONNÉES ---
   const loadVisitors = async () => {
@@ -57,10 +54,9 @@ const VisitorsList = () => {
   }, []);
 
   // --- ACTIONS ---
-  // Supprime handleOpenVisitModal et remplace par :
-const handleOpenVisitModal = (visitor) => {
+  const handleOpenVisitModal = (visitor) => {
     navigate('/create-visit', { state: { selectedVisitor: visitor } });
-};
+  };
 
   const handleDelete = async (id) => {
     if (window.confirm("Envoyer ce visiteur à la corbeille ?")) {
@@ -101,20 +97,19 @@ const handleOpenVisitModal = (visitor) => {
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'} p-10`}>
         
         {/* Header */}
-    <div className="flex justify-between items-center mb-8">
-      <div>
-        <h1 className="text-2xl font-black text-slate-800">Gestion des Visiteurs</h1>
-        <p className="text-slate-500 text-sm">Gestion des accès - Aigle Informatique</p>
-      </div>
-      
-      {/* 3. Ajoute le onClick avec navigate */}
-     <button 
-  onClick={() => navigate('/Inscription')} // Majuscule ici pour correspondre à ta route
-  className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
->
-  + Ajouter un visiteur
-</button>
-    </div>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800">Gestion des Visiteurs</h1>
+            <p className="text-slate-500 text-sm">Gestion des accès - Davila Entreprise</p>
+          </div>
+          
+          <button 
+            onClick={() => navigate('/Inscription')} // Redirige vers la création de compte
+            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
+          >
+            + Ajouter un visiteur
+          </button>
+        </div>
 
         {/* Barre de Recherche et Sélecteur */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex gap-4 items-center">
@@ -181,18 +176,29 @@ const handleOpenVisitModal = (visitor) => {
                             >
                               📅
                             </button>
+
+                            {/* 🟢 BOUTON CRAYON MODIFIÉ (✏️) : Dirige vers /Inscription */}
                             <button 
-                             onClick={() => navigate('/register-visitor', { state: { visitorToEdit: visitor } })}
-                             className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg"
-                              >
-                             ✏️
-                             </button>
-                            <button onClick={() => handleDelete(visitor.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg">🗑️</button>
+                              onClick={() => navigate('/Inscription', { state: { visitorToEdit: visitor } })}
+                              className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                              title="Modifier les informations"
+                            >
+                              ✏️
+                            </button>
+
+                            {/* BOUTON POUBELLE (🗑️) */}
+                            <button 
+                              onClick={() => handleDelete(visitor.id)} 
+                              className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                              title="Envoyer à la corbeille"
+                            >
+                              🗑️
+                            </button>
                           </>
                         ) : (
                           <button 
                             onClick={() => handleRestore(visitor.id)}
-                            className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-xs font-black hover:bg-emerald-100"
+                            className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-xs font-black hover:bg-emerald-100 transition-colors"
                           >
                             🔄 Restaurer
                           </button>
@@ -212,15 +218,13 @@ const handleOpenVisitModal = (visitor) => {
           )}
         </div>
 
-        {/* MODALE DE CRÉATION DE VISITE */}
+        {/* MODALE DE CRÉATION DE VISITE (Optionnelle / Backup) */}
         {isVisitModalOpen && (
           <CreateVisit
             onClose={() => setIsVisitModalOpen(false)} 
             onSuccess={() => {
               setIsVisitModalOpen(false);
-              // Optionnel : recharger une liste si nécessaire
             }}
-            // On envoie les infos du visiteur à la modale
             initialData={{ 
               idVisitor: selectedVisitor?.id, 
               nom: selectedVisitor?.nom 
