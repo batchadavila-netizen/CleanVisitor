@@ -13,4 +13,9 @@ public class Visit
     public ServiceVisitor Service{get;set;}
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
+    public int? UserId { get; set; }
+    // pour le code et QR code 
+    public string? AccessCode { get; set; }
+    // information coter visiteur
+   public Visitor ?Visitor { get; set; }
 }

@@ -46,14 +46,43 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
     }
 
     public async Task<VisitDto?> Handle(UpdateVisitCommand request, CancellationToken cancellationToken)
-    {
-        // 1. Récupérer la visite avant modification
-        var oldVisitDto = await _repository.GetByIdAsync(request.Id);
-        if (oldVisitDto == null) return null;
+{
+    // 1. Récupérer la visite avant modification
+    var oldVisitDto = await _repository.GetByIdAsync(request.Id);
+    if (oldVisitDto == null) return null;
 
-        // 2. Déterminer le statut selon qui fait la modification
-        // Si c'est un visiteur → retour en attente (statut 1)
-        // Si c'est un admin/agent → on garde le statut envoyé (accepté = 2)
+    // 🟢 2. BLOQUER UNIQUEMENT SI LA VISITE EST TERMINÉE (3)
+    if (oldVisitDto.Statut == VisitStatut.Terminee)
+    {
+        throw new InvalidOperationException("Cette visite est déjà terminée et ne peut plus être modifiée.");
+    }
+
+    // 🟢 3. VÉRIFICATION DE CHEVAUCHEMENT (Règle des 2 heures)
+    int hostUserId = request.UserId ?? oldVisitDto.UserId ?? 0;
+    var existingVisits = await _repository.GetVisitsByHostAndDateAsync(hostUserId, request.Date);
+
+    TimeSpan newStartVal = request.HeureArriver;
+    TimeSpan newEndVal = newStartVal.Add(TimeSpan.FromHours(2));
+
+    foreach (var otherVisit in existingVisits)
+    {
+        // On ignore la visite en cours de modification
+        if (otherVisit.Id == request.Id) continue;
+
+        TimeSpan existingStartVal = otherVisit.HeureArriver;
+        TimeSpan existingEndVal = existingStartVal.Add(TimeSpan.FromHours(2));
+
+        // Formule de chevauchement de créneaux
+        if (newStartVal < existingEndVal && newEndVal > existingStartVal)
+        {
+            // 🟢 Message clair et explicite pour l'utilisateur
+            throw new InvalidOperationException($"Le créneau de {existingStartVal:hh\\:mm} à {existingEndVal:hh\\:mm} est déjà occupé. Une visite dure environ 2 heures, veuillez choisir une autre heure.");
+        }
+    }
+
+    // ... Reste de ton code de mise à jour (Notifications, SignalR, Email)
+
+        // 4. Déterminer le statut selon qui fait la modification
         bool isAdminOrAgent = request.UpdatedByRole == "Admin" || request.UpdatedByRole == "Agent";
         
         if (!isAdminOrAgent)
@@ -62,16 +91,16 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
             request = request with { Statut = VisitStatut.En_attente };
         }
 
-        // 3. Détection de reprogrammation (date ou heure changée)
+        // 5. Détection de reprogrammation (date ou heure changée)
         bool isReprogrammed = oldVisitDto.Date.Date != request.Date.Date ||
                               oldVisitDto.HeureArriver != request.HeureArriver;
 
-        // 4. Mise à jour en base
+        // 6. Mise à jour en base
         var visitEntity = _mapper.Map<Visit>(oldVisitDto);
         _mapper.Map(request, visitEntity);
         var result = await _repository.UpdateAsync(visitEntity);
 
-        // 5. Récupérer les infos du visiteur
+        // 7. Récupérer les infos du visiteur
         var visitor = await _visitorRepository.GetByIdAsync(visitEntity.IdVisitor);
         if (visitor == null) return _mapper.Map<VisitDto>(result);
 
@@ -82,15 +111,14 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
         var smtpPort     = int.Parse(_configuration["EmailCommand:Port"] ?? "587");
         var adminEmail   = _configuration["EmailCommand:AdminEmail"] ?? "batchadavila81@gmail.com";
 
-        // 6. Notifications selon qui a modifié
+        // 8. Notifications selon qui a modifié
         if (isAdminOrAgent)
         {
-            // ADMIN modifie → notifier le VISITEUR
+            // ADMIN / AGENT modifie → notifier le VISITEUR
             if (isReprogrammed)
             {
                 string messageVisiteur = $"Votre visite a été reprogrammée au {request.Date:dd/MM/yyyy} à {request.HeureArriver}.";
 
-                // Notification en base pour le visiteur
                 await _notifRepository.AddAsync(new Notification
                 {
                     IdVisitor = visitor.Id,
@@ -101,10 +129,8 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
                     ReceiverRole = "Visiteur"
                 });
 
-                // SignalR au visiteur
                 await _signalRService.SendStatusUpdateAsync(visitor.Email, messageVisiteur, "REPROGRAMMATION");
 
-                // Email au visiteur
                 await SendEmailSafe(smtpEmail!, smtpPassword!, smtpHost!, smtpPort,
                     to: visitor.Email,
                     subject: "Reprogrammation de votre visite",
@@ -123,7 +149,6 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
             // VISITEUR modifie → notifier l'ADMIN
             string messageAdmin = $"Le visiteur {visitor.Nom} a modifié sa visite du {request.Date:dd/MM/yyyy} à {request.HeureArriver}. La visite est revenue en attente de validation.";
 
-            // Notification en base pour l'admin
             await _notifRepository.AddAsync(new Notification
             {
                 IdVisitor = visitor.Id,
@@ -134,10 +159,8 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
                 ReceiverRole = "Admin"
             });
 
-            // SignalR à l'admin
             await _signalRService.SendStatusUpdateAsync(adminEmail, messageAdmin, "VISIT_UPDATE");
 
-            // Email à l'admin
             await SendEmailSafe(smtpEmail!, smtpPassword!, smtpHost!, smtpPort,
                 to: adminEmail,
                 subject: "⚠️ Un visiteur a modifié sa visite",
@@ -153,7 +176,6 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
                         <p>Connectez-vous à l'interface admin pour valider cette demande.</p>
                     </div>");
 
-            // Notifier aussi le visiteur que sa modif est en attente
             string messageVisiteur = $"Votre demande de modification a été enregistrée. Elle est en attente de validation par l'administration.";
 
             await _notifRepository.AddAsync(new Notification
@@ -172,7 +194,6 @@ public class UpdateVisitHandler : IRequestHandler<UpdateVisitCommand, VisitDto?>
         return _mapper.Map<VisitDto>(result);
     }
 
-    // Méthode utilitaire pour envoyer un email sans bloquer le process
     private async Task SendEmailSafe(string smtpEmail, string smtpPassword, string smtpHost, int smtpPort, string to, string subject, string body)
     {
         if (string.IsNullOrEmpty(smtpEmail) || string.IsNullOrEmpty(smtpPassword) || string.IsNullOrEmpty(to))

@@ -14,6 +14,7 @@ public record UpdateVisitCommand : IRequest<VisitDto?>
     public TimeSpan HeureDepart { get; set; }
     public VisitStatut Statut { get; set; }
     public ServiceVisitor Service { get; set; }
+    public int? UserId { get; init; }
 
     // NOUVEAU : pour savoir qui fait la modification
     public string UpdatedByRole { get; set; } = "Visiteur"; // "Admin", "Agent" ou "Visiteur"

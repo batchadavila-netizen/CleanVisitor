@@ -6,5 +6,4 @@ namespace CleanVisitor.Core.Enum. ServiceVisitor;
     Service_financier=3,
     Service_informatique=4,
     Secretariat=5
-    
 }

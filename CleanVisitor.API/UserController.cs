@@ -3,6 +3,7 @@ using MediatR;
 using System.Security.Claims;
 using CleanVisitor.Core.Entities.User;
 using Microsoft.AspNetCore.Authorization;
+using CleanVisitor.Application.Features.Users.Queries.GetAgentsByService;
 using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Application.Features.Users.Commande.CreateUser;
 using CleanVisitor.Application.Features.Users.Commande.DeleteUser.DeleteUserCommand;
@@ -110,6 +111,13 @@ public async Task<IActionResult> GetDeletedByIdAsync([FromRoute] int id)
 public async Task<IActionResult> GetProfile(int id)
 {
     var query = new GetUserProfileQuery { UserId = id };
+    var result = await _mediator.Send(query);
+    return Ok(result);
+}
+[HttpGet("agents-by-service/{service}")]
+public async Task<IActionResult> GetAgentsByService(string service)
+{
+    var query = new GetAgentsByServiceQuery(service);
     var result = await _mediator.Send(query);
     return Ok(result);
 }

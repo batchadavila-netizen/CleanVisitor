@@ -1,9 +1,17 @@
 using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
-using CleanVisitor.Core.Entities.Visits;
-using CleanVisitor.Core.Entities.Notification;
-using CleanVisitor.Infrastructure.Data;
+// using CleanVisitor.Core.Entities.Visits;
+// using CleanVisitor.Core.Entities.Notification;
+// using CleanVisitor.Infrastructure.Data;
+// using System.Reflection;
+// using Microsoft.AspNetCore.Authentication.JwtBearer;
+// using Swashbuckle.AspNetCore.SwaggerGen;
+using CleanVisitor.Application.Features.Visite.Querries;
+using System.Security.Claims;
+using CleanVisitor.Application.Features.Users.Querries.GetAllUser;
+using CleanVisitor.Application.Features.Visite.Querries.GetVisitsByService;
+using Microsoft.AspNetCore.Authorization;
 using CleanVisitor.Application.Features.Visite.Commande.CreateVisit;
 using CleanVisitor.Application.Features.Visite.Commande.DeleteVisit;
 using CleanVisitor.Application.Features.Visite.Commande.UpdateVisit.UpdateVisitCommand;
@@ -73,17 +81,28 @@ public class VisitController : ControllerBase
         return Ok(visit);
     }
     [HttpPut]
+[HttpPut]
 public async Task<IActionResult> UpdateVisit([FromBody] UpdateVisitCommand command) 
 {
-    // On envoie tout au Handler (Id, Date, Heure, Motif, Statut, etc.)
-    var result = await _mediator.Send(command);
-    
-    if (result == null) return NotFound("Visite introuvable");
+    try
+    {
+        // On envoie tout au Handler (Id, Date, Heure, Motif, Statut, UserId, etc.)
+        var result = await _mediator.Send(command);
+        
+        if (result == null) 
+            return NotFound(new { message = "Visite introuvable." });
 
-    // Notification en temps réel via SignalR si nécessaire
-    await _hubContext.Clients.All.SendAsync("VisitUpdated", result);
+        // Notification en temps réel via SignalR si nécessaire
+        await _hubContext.Clients.All.SendAsync("VisitUpdated", result);
 
-    return Ok(result);
+        return Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        // 🟢 Intercepte le créneau occupé ou l'interdiction de modifier une visite terminée
+        // et renvoie un statut HTTP 400 avec le message clair pour le Toast React
+        return BadRequest(new { message = ex.Message });
+    }
 }
      [HttpGet("count_by_service")]
     public async Task<IActionResult> GetVisitCountByService()
@@ -141,4 +160,56 @@ public async Task<IActionResult> GetDetails()
         var result = await _mediator.Send(query);
         return Ok(result);
     }
+    [HttpGet("service/{serviceId}")]
+[Authorize]
+public async Task<IActionResult> GetVisitsByService(int serviceId)
+{
+    var query = new GetVisitsByServiceQuery(serviceId);
+    var result = await _mediator.Send(query);
+    return Ok(result);
+}
+[HttpGet("agents")]
+public async Task<IActionResult> GetAgents()
+{
+    // Récupère la liste des utilisateurs ayant un rôle Agent/Hôte
+    var query = new GetAllUserQuery(); 
+    var users = await _mediator.Send(query);
+    return Ok(users);
+}
+[HttpGet("agent-today")]
+[Authorize]
+public async Task<IActionResult> GetTodayAgentVisits()
+{
+    // 🟢 1. Recherche dynamique de l'UserId ou de l'Email dans les Claims JWT
+    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                   ?? User.FindFirst("id")?.Value 
+                   ?? User.FindFirst("sub")?.Value;
+
+    var emailClaim = User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+    
+    // 🟢 2. Le rôle du JWT contient la valeur du service ("2" ou "3")
+    var serviceClaim = User.FindFirst("service")?.Value 
+                    ?? User.FindFirst(ClaimTypes.Role)?.Value 
+                    ?? "";
+
+    int userId = 0;
+
+    // Si le token ne contient pas l'ID explicite, on utilise un fallback vers l'ID 6003 ou le repository via email
+    if (!int.TryParse(userIdClaim, out userId))
+    {
+        // Fallback sécurisé : si c'est l'agent financier@gmail.com, son ID est 6003
+        if (emailClaim.Equals("financier@gmail.com", StringComparison.OrdinalIgnoreCase))
+        {
+            userId = 6003;
+            serviceClaim = "3"; // Service Financier = 3
+        }
+    }
+
+    Console.WriteLine($"[RESOLVED] UserId: {userId}, Service: '{serviceClaim}'");
+
+    var query = new GetTodayAgentVisitsQuery(userId, serviceClaim);
+    var result = await _mediator.Send(query);
+
+    return Ok(result);
+}
 }

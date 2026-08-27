@@ -8,12 +8,13 @@ import Inscription from './pages/InscriptionPage/Inscription';
 import Dashboard from './pages/Dashboard';
 import VisitorsList from './pages/VisitorsList';
 import VisiteurDashboard from './pages/VisiteurDashboard';
+import AgentDashboard from './pages/AgentDashboard';
+import Settings from './pages/Settings';
 
 // Composants
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminValidation from './components/AdminValidation'; 
 import CreateVisit from './components/CreateVisit'; 
-// import AgentVisits from './components/AgentVisits';
 import Profile from './components/Profile';
 import CreateVisitModal from './components/CreateVisitModal';
 import ResetPasswordPage from './components/MotDePasseOublier/ResetPasswordPage';
@@ -35,17 +36,33 @@ function App() {
         <Route path="/LandingPage" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/Inscription" element={<Inscription />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordForm />} />
 
-        {/* --- ROUTES ADMIN & AGENT --- */}
+        {/* --- ROUTE ACCUEIL GÉNÉRAL (ADMIN & AGENT SÉCRÉTARIAT) --- */}
         <Route path="/dashboard" element={
           <ProtectedRoute allowedRoles={['Admin', 'Agent']}>
             <Dashboard />
           </ProtectedRoute>
         } />
+
+        {/* --- ROUTE RESTREINTE SERVICE (AGENTS RH, IT, FINANCE, DIRECTION) --- */}
+        <Route path="/agent-dashboard" element={
+          <ProtectedRoute allowedRoles={['Agent']}>
+            <AgentDashboard />
+          </ProtectedRoute>
+        } />
         
+        {/* --- GESTION DES VISITANTS & PARAMÈTRES --- */}
         <Route path="/visitors" element={
           <ProtectedRoute allowedRoles={['Admin', 'Agent']}>
             <VisitorsList />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/settings" element={
+          <ProtectedRoute allowedRoles={['Admin']}>
+            <Settings />
           </ProtectedRoute>
         } />
 
@@ -63,10 +80,8 @@ function App() {
         } />
 
         {/* --- ROUTES PARTAGÉES (MODIFICATION / CRÉATION) --- */}
-        
-        {/* Cette route doit être accessible aux deux pour permettre la reprogrammation */}
         <Route path="/create-visit" element={
-          <ProtectedRoute allowedRoles={['Admin','Agent', 'Visiteur']}>
+          <ProtectedRoute allowedRoles={['Admin', 'Agent', 'Visiteur']}>
             <CreateVisit />
           </ProtectedRoute>
         } />
@@ -83,10 +98,8 @@ function App() {
             <Profile />
           </ProtectedRoute>
         } />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordForm />} />
 
-        {/* --- FALLBACK (Redirection si route inconnue) --- */}
+        {/* --- FALLBACK --- */}
         <Route path="*" element={<Navigate to="/LandingPage" />} />
       </Routes>
     </Router>

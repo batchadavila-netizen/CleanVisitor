@@ -12,4 +12,7 @@ public class UserDto
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
     public int VisitorId { get; set; }
+    public string? PasswordHash {get; set;}
+    public string ?Telephone {get; set;}
+    public string Service { get; set; } = string.Empty;
 }

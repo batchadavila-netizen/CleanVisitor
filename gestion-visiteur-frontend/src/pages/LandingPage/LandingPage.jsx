@@ -1,17 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const LandingPage = () => {
+  const [companyName, setCompanyName] = useState(
+    () => localStorage.getItem('companyName') || 'DAVILA ENTREPRISE'
+  );
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      const updatedName = localStorage.getItem('companyName') || 'DAVILA ENTREPRISE';
+      setCompanyName(updatedName);
+    };
+
+    window.addEventListener('configUpdated', handleConfigChange);
+    return () => window.removeEventListener('configUpdated', handleConfigChange);
+  }, []);
+
+  const getInitials = (name) => {
+    if (!name) return 'DE';
+    const words = name.trim().split(' ').filter(Boolean);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans">
-
       {/* NAVIGATION */}
       <header className="w-full bg-white border-b border-slate-100 sticky top-0 z-50">
         <nav className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="bg-blue-600 text-white w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm">DE</div>
-            <span className="text-base font-semibold tracking-tight">
-              DAVILA <span className="text-blue-600">ENTREPRISE</span>
+            <div className="bg-blue-600 text-white w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm">
+              {getInitials(companyName)}
+            </div>
+            <span className="text-base font-bold tracking-tight uppercase">
+              {companyName}
             </span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
@@ -19,14 +43,6 @@ const LandingPage = () => {
             <a href="#security" className="hover:text-blue-600 transition-colors">Sécurité</a>
             <a href="#contact" className="hover:text-blue-600 transition-colors">Contact</a>
           </div>
-          {/* <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors px-3 py-2">
-              Se connecter
-            </Link>
-            <Link to="/Inscription" className="bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors">
-              S'inscrire
-            </Link>
-          </div> */}
         </nav>
       </header>
 
@@ -43,7 +59,7 @@ const LandingPage = () => {
           </h1>
 
           <p className="text-base text-slate-500 leading-relaxed">
-            La solution complète pour Davila Entreprise. Sécurisez vos accès, automatisez l'enregistrement et suivez vos flux de visiteurs en temps réel.
+            La solution complète pour <strong className="text-slate-800">{companyName}</strong>. Sécurisez vos accès, automatisez l'enregistrement et suivez vos flux de visiteurs en temps réel.
           </p>
 
           <ul className="space-y-3">
@@ -116,7 +132,6 @@ const LandingPage = () => {
           </Link>
         </div>
       </section>
-
     </div>
   );
 };
