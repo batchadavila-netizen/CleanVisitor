@@ -83,8 +83,23 @@ const Settings = () => {
     e.preventDefault();
     try {
       setSaving(true);
+      
+      // 1. Sauvegarde côté API / Backend
       await configService.saveConfig(config);
-      alert("Paramètres enregistrés avec succès dans la base de données SQL Server !");
+
+      // 🟢 2. SAUVEGARDE EN LOCAL POUR LA PERSISTANCE AU RAFRAÎCHISSEMENT (F5)
+      if (config.companyServices) {
+        localStorage.setItem('companyServices', JSON.stringify(config.companyServices));
+      }
+      if (config.companyName) {
+        localStorage.setItem('companyName', config.companyName);
+      }
+
+      // 🟢 3. PROPAGATION EN TEMPS RÉEL À TOUS LES COMPOSANTS (Visits, Users, etc.)
+      window.dispatchEvent(new Event('configUpdated'));
+      window.dispatchEvent(new Event('storage'));
+
+      alert("Paramètres enregistrés avec succès !");
     } catch (error) {
       console.error(error);
       alert("Erreur lors de la sauvegarde sur le serveur.");

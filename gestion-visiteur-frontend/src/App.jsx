@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import VisitorsList from './pages/VisitorsList';
 import VisiteurDashboard from './pages/VisiteurDashboard';
 import AgentDashboard from './pages/AgentDashboard';
+import { SSOCallback } from './components/SSOCallback';
 import Settings from './pages/Settings';
 
 // Composants
@@ -31,29 +32,30 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* --- ROUTES PUBLIQUES --- */}
+        {/* ROUTES PUBLIQUES */}
         <Route path="/" element={<Navigate to="/LandingPage" />} />
         <Route path="/LandingPage" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/Inscription" element={<Inscription />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordForm />} />
+        <Route path="/sso-callback/*" element={<SSOCallback />} />
 
-        {/* --- ROUTE ACCUEIL GÉNÉRAL (ADMIN & AGENT SÉCRÉTARIAT) --- */}
+        {/* ACCUEIL GÉNÉRAL */}
         <Route path="/dashboard" element={
           <ProtectedRoute allowedRoles={['Admin', 'Agent']}>
             <Dashboard />
           </ProtectedRoute>
         } />
 
-        {/* --- ROUTE RESTREINTE SERVICE (AGENTS RH, IT, FINANCE, DIRECTION) --- */}
+        {/* SERVICE RESTREINT */}
         <Route path="/agent-dashboard" element={
           <ProtectedRoute allowedRoles={['Agent']}>
             <AgentDashboard />
           </ProtectedRoute>
         } />
         
-        {/* --- GESTION DES VISITANTS & PARAMÈTRES --- */}
+        {/* PARAMÈTRES & VISITANTS */}
         <Route path="/visitors" element={
           <ProtectedRoute allowedRoles={['Admin', 'Agent']}>
             <VisitorsList />
@@ -72,14 +74,14 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* --- ROUTES VISITEUR (ESPACE PERSONNEL) --- */}
+        {/* ESPACE VISITEUR */}
         <Route path="/mon-espace" element={
           <ProtectedRoute allowedRoles={['Visiteur']}>
             <VisiteurDashboard />
           </ProtectedRoute>
         } />
 
-        {/* --- ROUTES PARTAGÉES (MODIFICATION / CRÉATION) --- */}
+        {/* CREATION / PROFILE */}
         <Route path="/create-visit" element={
           <ProtectedRoute allowedRoles={['Admin', 'Agent', 'Visiteur']}>
             <CreateVisit />
@@ -92,14 +94,13 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Route Profil Unique pour tous les rôles */}
         <Route path="/profile" element={
           <ProtectedRoute allowedRoles={['Admin', 'Agent', 'Visiteur']}>
             <Profile />
           </ProtectedRoute>
         } />
 
-        {/* --- FALLBACK --- */}
+        {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/LandingPage" />} />
       </Routes>
     </Router>

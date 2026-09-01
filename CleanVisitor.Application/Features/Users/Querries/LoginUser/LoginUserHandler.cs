@@ -4,6 +4,7 @@ using CleanVisitor.Application.Features.Users.Interfaces.IJwtTokenGenerator;
 using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Application.Features.Users.Interfaces;
 using CleanVisitor.Application.Features.Users.Querries.LoginUser;
+using CleanVisitor.Core.Entities.User;
 
 namespace CleanVisitor.Application.Features.Users.Querries.LoginUser.LoginUserHandler; 
 
@@ -22,26 +23,45 @@ public class LoginUserHandler : IRequestHandler<LoginUserQuery, AuthenticationRe
 
     public async Task<AuthenticationResponse> Handle(LoginUserQuery request, CancellationToken cancellationToken)
     {
-        var user = await _repository.GetByEmailAsync(request.Email);
+        // 1. Récupération de l'utilisateur (renvoie un UserDto)
+        var userDto = await _repository.GetByEmailAsync(request.Email);
 
-        if (user == null)
+        if (userDto == null)
             throw new Exception("Identifiants incorrects (Email non trouvé)");
 
-        if (string.IsNullOrEmpty(user.PasswordHash))
+        if (string.IsNullOrEmpty(userDto.PasswordHash))
             throw new Exception("Identifiants incorrects (Hash vide en base)");
 
-        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        bool isPasswordValid = false;
+
+        // 2. Vérification du mot de passe
+        if (userDto.PasswordHash.StartsWith("$2a$") || userDto.PasswordHash.StartsWith("$2b$") || userDto.PasswordHash.StartsWith("$2y$"))
+        {
+            isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, userDto.PasswordHash);
+        }
+        else
+        {
+            isPasswordValid = (userDto.PasswordHash == request.Password);
+
+            if (isPasswordValid)
+            {
+                // Mise à jour du hash sur le DTO
+                userDto.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                
+                // 🟢 Conversion en 'User' car UpdateAsync attend un 'User'
+                var userEntity = _mapper.Map<User>(userDto);
+                await _repository.UpdateAsync(userEntity);
+            }
+        }
 
         if (!isPasswordValid)
-            throw new Exception("Identifiants incorrects (Mot de passe refusé par BCrypt)");
+            throw new Exception("Identifiants incorrects (Mot de passe invalide)");
 
-        string roleName = user.Role.ToString();
-        
-        // 🟢 Extraction sécurisée : gère les chaînes, entiers ou valeurs nulles
-        string serviceCode = user.Service?.ToString() ?? "5"; 
+        string roleName = userDto.Role.ToString();
+        string serviceCode = userDto.Service?.ToString() ?? "5"; 
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
-        var userDto = _mapper.Map<UserDto>(user);
+        // 🟢 Passage de 'userDto' car IJwtTokenGenerator prend un 'UserDto'
+        var token = _jwtTokenGenerator.GenerateToken(userDto);
 
         return new AuthenticationResponse(userDto, token, roleName, serviceCode);
     }

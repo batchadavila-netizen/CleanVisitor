@@ -30,9 +30,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // 🟢 SUPPRESSION DE JsonStringEnumConverter : Les enums sont sérialisés sous forme d'entiers (1, 2, 3)
-        // options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); 
-        
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
@@ -53,9 +50,13 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSignalR();
 
-// --- 3. AUTHENTIFICATION JWT ---
+// --- 3. AUTHENTIFICATION JWT (HYBRIDE : C# LOCAL + CLERK GOOGLE) ---
 var jwtKey = builder.Configuration["Jwt:Key"];
 if (string.IsNullOrEmpty(jwtKey)) throw new Exception("Jwt:Key manquante dans appsettings.json");
+
+// Récupération de l'Issuer Clerk depuis appsettings.json (avec fallback sur ton domaine exact)
+var clerkIssuer = builder.Configuration["Clerk:Issuer"] ?? "https://glad-collie-7683.clerk.accounts.dev";
+var localIssuer = builder.Configuration["Jwt:Issuer"] ?? "CleanVisitorApi";
 
 builder.Services.AddAuthentication(options => {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -63,18 +64,23 @@ builder.Services.AddAuthentication(options => {
 })
 .AddJwtBearer(options =>
 {
+    options.Authority = clerkIssuer; // Pour télécharger automatiquement la clé publique Clerk (OpenID)
+    
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
-        ValidateAudience = true,
+        // Acceptation simultanée des jetons locaux C# et des jetons Clerk
+        ValidIssuers = new[] { localIssuer, clerkIssuer },
+        
+        ValidateAudience = false, // Désactivé pour la compatibilité des jetons SSO Clerk
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
+        
+        // Clé de signature locale pour les jetons générés par C# (Admin/Agent)
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 
-    // 🟢 CONFIGURATION SIGNALR POUR JWT (Transmission du token via QueryString)
+    // CONFIGURATION SIGNALR POUR JWT (Transmission du token via QueryString)
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>

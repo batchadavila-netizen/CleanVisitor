@@ -1,11 +1,10 @@
-const API_URL = "http://localhost:5283/api/auth";
+import { fetchWithAuth } from './apiClient';
 
 export const authService = {
-  // INSCRIPTION
+  // INSCRIPTION : Route /api/auth/register
   Inscription: async (userData) => {
-    const response = await fetch(`${API_URL}/register`, { 
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    return await fetchWithAuth('/api/auth/register', { 
+      method: 'POST',
       body: JSON.stringify({
         Nom: userData.nom,
         Prenom: userData.prenom,
@@ -13,60 +12,44 @@ export const authService = {
         Password: userData.password,
         Telephone: userData.telephone,
         Role: parseInt(userData.role, 10),
-        Service: parseInt(userData.service || '5', 10) // 🟢 Transmission du service (5 par défaut)
+        Service: parseInt(userData.service || '5', 10)
       }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Erreur lors de l'inscription");
-    }
-    
-    return response.status === 201 ? { success: true } : await response.json();
   },
 
-  // CONNEXION
+  // CONNEXION : Route /api/auth/login
   login: async (email, password) => {
-    const response = await fetch(`${API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const data = await fetchWithAuth('/api/auth/login', {
+      method: 'POST',
       body: JSON.stringify({ Email: email, Password: password }),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Identifiants invalides");
-    }
-
-    const data = await response.json();
-    
-    // 🟢 MAPPING RÔLE ET SERVICE
     const rolesMap = {
-      1: 'Admin', 'Admin': 'Admin',
-      2: 'Agent', 'Agent': 'Agent',
-      3: 'Visiteur', 'Visiteur': 'Visiteur'
+      1: 'Admin', '1': 'Admin', 'admin': 'Admin', 'Admin': 'Admin',
+      2: 'Agent', '2': 'Agent', 'agent': 'Agent', 'Agent': 'Agent',
+      3: 'Visiteur', '3': 'Visiteur', 'visiteur': 'Visiteur', 'Visiteur': 'Visiteur'
     };
 
-    const roleText = rolesMap[data.role || data.user?.role] || 'Visiteur';
-    
-    // Extraction du code de service (par l'API directe ou dans user, "5" par défaut)
+    const rawRole = data.role ?? data.user?.role ?? data.Role;
+    const roleText = rolesMap[rawRole] || rolesMap[String(rawRole).trim()] || 'Visiteur';
     const serviceCode = String(data.service || data.user?.service || '5');
 
-    console.log("🔍 Rôle décodé:", roleText, "| Service décodé:", serviceCode);
-
-    // 🟢 STOCKAGE LOCALSTORAGE
-    localStorage.setItem('token', data.token);
+    if (data.token) localStorage.setItem('token', data.token);
     localStorage.setItem('userRole', roleText); 
-    localStorage.setItem('userService', serviceCode); // 👈 Sauvegarde clé du service !
+    localStorage.setItem('userService', serviceCode);
     localStorage.setItem('userName', `${data.user?.prenom || ''} ${data.user?.nom || ''}`);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    
+    const resolvedUserId = data.user?.id || data.user?.Id || data.id || data.Id;
+    const resolvedVisitorId = data.user?.visitorId || data.user?.VisitorId || resolvedUserId;
 
-    // IDs utilisateur & visiteur
-    localStorage.setItem('userId', data.user?.id || data.id);
-    const vId = data.user?.visitorId || data.user?.idVisitor || data.user?.id; 
-    localStorage.setItem('visitorId', vId);
+    if (resolvedUserId) localStorage.setItem('userId', resolvedUserId);
+    if (resolvedVisitorId) localStorage.setItem('visitorId', resolvedVisitorId);
 
-    // Retour de l'objet complet avec service
+    if (data.user) {
+      const updatedUser = { ...data.user, id: resolvedUserId, role: roleText };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+
     return { 
       role: roleText, 
       service: serviceCode, 
@@ -75,16 +58,63 @@ export const authService = {
     };
   },
 
+  // 🟢 CONNEXION GOOGLE SSO (Synchronisation des identifiants SQL)
+  loginWithGoogle: async (googleData) => {
+    const data = await fetchWithAuth('/api/auth/google-login', { 
+      method: 'POST',
+      body: JSON.stringify({
+        Email: googleData.email,
+        Nom: googleData.nom || googleData.familyName,
+        Prenom: googleData.prenom || googleData.givenName,
+        Telephone: googleData.telephone || ''
+      }),
+    });
+
+    const resolvedUserId = data.user?.id || data.user?.Id || data.userId || data.id;
+    const resolvedVisitorId = data.user?.visitorId || data.visitorId || resolvedUserId;
+
+    if (data.token) localStorage.setItem('token', data.token);
+    if (resolvedUserId) localStorage.setItem('userId', resolvedUserId);
+    if (resolvedVisitorId) localStorage.setItem('visitorId', resolvedVisitorId);
+    
+    localStorage.setItem('userRole', 'Visiteur');
+    localStorage.setItem('userName', `${googleData.prenom || ''} ${googleData.nom || ''}`);
+    
+    if (data.user) {
+      localStorage.setItem('user', JSON.stringify({ ...data.user, id: resolvedUserId }));
+    }
+
+    return data;
+  },
+
+  // 🟢 SYNCHRONISATION CLERK / GOOGLE SSO
+  syncClerkUser: async (userData) => {
+    const data = await fetchWithAuth('/api/user/sync', { 
+      method: 'POST',
+      body: JSON.stringify({
+        Email: userData.email,
+        Nom: userData.nom,
+        Prenom: userData.prenom,
+        Telephone: userData.telephone || '+237600000000'
+      }),
+    });
+
+    const resolvedUserId = data.userId || data.user?.id || data.id;
+    if (data.token) localStorage.setItem('token', data.token);
+    if (resolvedUserId) {
+      localStorage.setItem('userId', resolvedUserId);
+      localStorage.setItem('visitorId', resolvedUserId);
+    }
+    
+    localStorage.setItem('userRole', 'Visiteur');
+    localStorage.setItem('userName', `${userData.prenom || ''} ${userData.nom || ''}`);
+    if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+
+    return data;
+  },
+
   // PROFIL UTILISATEUR
   getProfile: async (userId) => {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:5283/api/users/profile/${userId}`, {
-      method: "GET",
-      headers: { 
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json" 
-      },
-    });
-    return await response.json();
+    return await fetchWithAuth(`/api/user/profile/${userId}`);
   }
 };

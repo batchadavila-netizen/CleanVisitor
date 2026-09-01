@@ -11,5 +11,7 @@ public record UpdateUserCommand : IRequest<UserDto?>
     public string ?PasswordHash { get; set; } 
     public UserRole Role { get; set; }       
     public bool IsActive { get; set; } = true;
+    public string ?Telephone{get;set;}
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public string? Service { get; set; }
     }

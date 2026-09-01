@@ -1,53 +1,91 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:5283/api/Visitor'; // Vérifie ton port (5283 ou 5000)
+import { fetchWithAuth } from './apiClient';
 
 export const visitorService = {
-  // Récupérer tous les visiteurs
+  // 🟢 Récupération dynamique selon le rôle connecté
   getAll: async () => {
-    const response = await axios.get(API_URL);
-    return response.data;
-  },
-
-  getDeleted: async () => {
-    // Cette route doit correspondre à ton [HttpGet("deleted")] côté C#
-    const response = await axios.get(`${API_URL}/deleted`); 
-    return response.data;
-  },
-
-  // Supprimer (Soft Delete)
-  delete: async (id) => {
-    await axios.delete(`${API_URL}/${id}`);
-  },
-
-  // Restaurer
-  restore: async (id) => {
-    await axios.put(`${API_URL}/restore/${id}`);
-  },
-
-  // Ajouter un visiteur
-  create: async (visitorData) => {
-    const response = await axios.post(API_URL, visitorData);
-    return response.data;
-  },
-
-  // 🔥 Récupérer un visiteur par son ID
-  getById: async (id) => {
-    const response = await axios.get(`${API_URL}/${id}`);
-    return response.data;
-  },
-  // Dans visitorService.js, modifie cette fonction :
-getByEmail: async (email) => {
-  // On utilise API_URL pour rester cohérent avec le port 5283
-  const response = await axios.get(`http://localhost:5283/api/User/email/${email}`);
-  return response.data;
-},
-update: async (id, data) => {
     try {
-        const response = await axios.put(`${API_URL}`, { ...data, id });
-        return response.data;
+      const usersData = await fetchWithAuth('/api/user');
+      const list = Array.isArray(usersData) ? usersData : (usersData?.$values || []);
+      const userRole = localStorage.getItem('userRole');
+
+      // 🟢 Admin : Récupère TOUS les comptes. Agent : Visiteurs uniquement.
+      const filteredList = (userRole === 'Admin' || userRole === '1') 
+        ? list 
+        : list.filter(u => String(u.role) === '3' || String(u.role).toLowerCase() === 'visiteur');
+
+      return filteredList.map(u => ({
+        id: u.id || u.Id,
+        nom: u.nom || u.Nom,
+        prenom: u.prenom || u.Prenom,
+        email: u.email || u.Email,
+        telephone: u.telephone || u.Telephone || u.phoneNumber || u.Phone || 'N/A',
+        createdAt: u.createdAt || u.CreatedAt,
+        role: u.role || u.Role,
+        service: u.service || u.Service || ''
+      }));
     } catch (error) {
-        throw new Error(error.response?.data?.message || "Erreur de mise à jour");
+      console.error("Erreur getAll visitors:", error);
+      return [];
     }
-}
+  },
+
+  // 🟢 Récupération d'un utilisateur / visiteur par son ID (Correction 404)
+  getById: async (id) => {
+    try {
+      return await fetchWithAuth(`/api/user/${id}`);
+    } catch {
+      // Fallback au cas où l'ancienne route /api/Visitor/ est encore active côté C#
+      return fetchWithAuth(`/api/Visitor/${id}`).catch(() => null);
+    }
+  },
+
+  // 🟢 Mise à jour générale d'un profil (Règle l'erreur update is not a function)
+  update: async (id, userData) => {
+    const payload = {
+      id: parseInt(id || userData.id || userData.Id, 10),
+      nom: userData.nom,
+      prenom: userData.prenom,
+      email: userData.email,
+      telephone: userData.telephone,
+      role: parseInt(userData.role ?? 3, 10),
+      service: userData.service ? String(userData.service) : null,
+      isActive: true
+    };
+
+    // 🟢 Envoi direct sur /api/user sans l'ID dans l'URL
+    return fetchWithAuth('/api/user', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  // 🟢 Mise à jour spécifique Rôle et Service par l'Admin
+  updateRoleAndService: async (userData) => {
+    return fetchWithAuth('/api/user', {
+      method: 'PUT',
+      body: JSON.stringify({
+        id: parseInt(userData.id || userData.Id, 10),
+        nom: userData.nom,
+        prenom: userData.prenom,
+        email: userData.email,
+        telephone: userData.telephone,
+        role: parseInt(userData.role, 10),
+        service: String(userData.service || ''), 
+        isActive: true
+      })
+    });
+  },
+  // 🟢 Corbeille, Suppression, Restauration et Création
+  getDeleted: () => fetchWithAuth('/api/Visitor/deleted').catch(() => []),
+  delete: (id) => fetchWithAuth(`/api/user/${id}`, { method: 'DELETE' }).catch(() => fetchWithAuth(`/api/Visitor/${id}`, { method: 'DELETE' })),
+  restore: (id) => fetchWithAuth(`/api/user/restore/${id}`, { method: 'POST' }).catch(() => fetchWithAuth(`/api/Visitor/restore/${id}`, { method: 'POST' })),
+  create: (visitorData) => fetchWithAuth('/api/Visitor', {
+    method: 'POST',
+    body: JSON.stringify(visitorData)
+  }),
+
+  // 🟢 Statistiques d'affluence
+  getStatJour: () => fetchWithAuth('/api/Visitor/stat_jour').catch(() => 0),
+  getStatMois: () => fetchWithAuth('/api/Visitor/stat_mois').catch(() => 0),
+  getStatAnnee: () => fetchWithAuth('/api/Visitor/stat_annee').catch(() => 0)
 };

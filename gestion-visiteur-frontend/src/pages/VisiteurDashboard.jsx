@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { visitService } from '../services/visitService';
+import { authService } from '../services/authService';
 import { useNotification } from '../services/useNotification';
 import Sidebar from '../components/Sidebar';
 import CreateVisitModal from '../components/CreateVisitModal';
@@ -15,14 +17,30 @@ import {
 
 const VisiteurDashboard = () => {
   const navigate = useNavigate();
-  
-  const rawVisitorId = localStorage.getItem('visitorId') || localStorage.getItem('userId');
-  const visitorIdNum = rawVisitorId ? Number(rawVisitorId) : null;
+  const { user, isLoaded } = useUser();
 
-  const userNom = localStorage.getItem('userNom') || localStorage.getItem('userName') || 'Visiteur';
-  const userEmail = localStorage.getItem('userEmail');
-  const userId = localStorage.getItem('userId');
+  const userNom = user?.fullName || localStorage.getItem('userNom') || localStorage.getItem('userName') || 'Visiteur';
+  const userEmail = user?.primaryEmailAddress?.emailAddress || localStorage.getItem('userEmail');
 
+  const getActiveVisitorId = useCallback(() => {
+    const vId = localStorage.getItem('visitorId');
+    const uId = localStorage.getItem('userId');
+    const uJson = localStorage.getItem('user');
+
+    if (vId && vId !== 'undefined' && vId !== 'null') return parseInt(vId, 10);
+    if (uId && uId !== 'undefined' && uId !== 'null') return parseInt(uId, 10);
+    
+    if (uJson) {
+      try {
+        const parsed = JSON.parse(uJson);
+        const candidate = parsed.id || parsed.Id || parsed.visitorId || parsed.VisitorId;
+        if (candidate) return parseInt(candidate, 10);
+      } catch (e) { console.error(e); }
+    }
+    return null;
+  }, []);
+
+  const visitorIdNum = getActiveVisitorId();
   const { notifications, loading: loadingNotifs, refresh: refreshNotifs } = useNotification(visitorIdNum, 'Visiteur');
 
   const [visits, setVisits] = useState([]);
@@ -31,12 +49,42 @@ const VisiteurDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState(null);
-  
-  // État pour la modale du Badge Numérique
   const [selectedBadgeVisit, setSelectedBadgeVisit] = useState(null);
 
   const [showAllVisits, setShowAllVisits] = useState(false);
   const [showAllNotifs, setShowAllNotifs] = useState(false);
+
+  useEffect(() => {
+    const syncUserWithBackend = async () => {
+      if (!isLoaded || !user) return;
+
+      try {
+        const payload = {
+          email: user.primaryEmailAddress?.emailAddress,
+          nom: user.lastName || user.firstName || 'Visiteur',
+          prenom: user.firstName || 'Google',
+          telephone: user.primaryPhoneNumber?.phoneNumber || '+237600000000',
+          role: 3
+        };
+
+        const response = await authService.syncClerkUser(payload);
+
+        if (response) {
+          const resId = response.userId || response.user?.id || response.id;
+          if (response.token) localStorage.setItem('token', response.token);
+          if (resId) {
+            localStorage.setItem('userId', resId);
+            localStorage.setItem('visitorId', resId);
+          }
+          localStorage.setItem('userRole', 'Visiteur');
+        }
+      } catch (error) {
+        console.error('Erreur de synchronisation backend :', error);
+      }
+    };
+
+    syncUserWithBackend();
+  }, [user, isLoaded]);
 
   const enumToCode = { "En_attente": 1, "Accepter": 2, "Terminee": 3, "Annulé": 4 };
 
@@ -71,10 +119,13 @@ const VisiteurDashboard = () => {
     );
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await visitService.getVisitorVisit(userId);
+      const activeUserId = getActiveVisitorId();
+      if (!activeUserId) return;
+
+      const response = await visitService.getVisitorVisit(activeUserId);
       const laListe = response?.listVisitClon?.$values || response?.$values || (Array.isArray(response) ? response : []);
       
       const sorted = [...laListe].sort((a, b) => {
@@ -84,11 +135,11 @@ const VisiteurDashboard = () => {
       });
       setVisits(sorted);
     } catch (error) {
-      toast.error("Erreur de récupération des visites");
+      console.error("Erreur de récupération des visites:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getActiveVisitorId]);
 
   useEffect(() => {
     loadData();
@@ -101,8 +152,12 @@ const VisiteurDashboard = () => {
       }
     };
     connection.on("ReceiveStatusUpdate", handleReceiveUpdate);
-    return () => connection.off("ReceiveStatusUpdate", handleReceiveUpdate);
-  }, [visitorIdNum, userEmail, refreshNotifs]);
+    connection.on("ReceiveNewVisit", () => loadData());
+    return () => {
+      connection.off("ReceiveStatusUpdate", handleReceiveUpdate);
+      connection.off("ReceiveNewVisit");
+    };
+  }, [visitorIdNum, userEmail, refreshNotifs, loadData]);
 
   const sortedNotifications = useMemo(() => {
     if (!notifications || !Array.isArray(notifications)) return [];
@@ -127,7 +182,6 @@ const VisiteurDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F4F7F9] font-sans selection:bg-blue-200">
-      
       <Toaster position="top-right" toastOptions={{ className: 'rounded-2xl font-semibold text-sm' }} />
       
       <Sidebar 
@@ -138,8 +192,6 @@ const VisiteurDashboard = () => {
       />
 
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'} w-full flex flex-col`}>
-        
-        {/* BANNIÈRE */}
         <div className="bg-slate-900 px-8 pt-10 pb-20 relative overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
           
@@ -166,19 +218,13 @@ const VisiteurDashboard = () => {
           </div>
         </div>
 
-        {/* CONTENU PRINCIPAL */}
         <div className="px-8 -mt-10 relative z-20 pb-12 flex-1 flex flex-col">
-          
-          {/* CARTES STATS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 w-full">
             <StatCard icon={<History size={28}/>} title="Total Visites" value={visits.length} color="text-blue-600" bgColor="bg-blue-50" />
             <StatCard icon={<Clock size={28}/>} title="En Attente" value={pendingCount} color="text-amber-600" bgColor="bg-amber-50" />
           </div>
 
-          {/* GRILLE PRINCIPALE */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:h-[500px] w-full">
-
-            {/* BLOC 1 : MES DEMANDES */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
               <div className="p-6 md:p-8 border-b border-slate-50 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-3">
@@ -228,7 +274,6 @@ const VisiteurDashboard = () => {
                           </div>
 
                           <div className="flex items-center gap-3 shrink-0 pl-4">
-                            {/* BOUTON BOUTON PASS NUMÉRIQUE SI ACCEPTÉE */}
                             {effectiveStatus === 2 && (
                               <button
                                 onClick={(e) => {
@@ -268,7 +313,6 @@ const VisiteurDashboard = () => {
               )}
             </div>
 
-            {/* BLOC 2 : NOTIFICATIONS */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
               <div className="p-6 md:p-8 border-b border-slate-50 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
@@ -329,17 +373,14 @@ const VisiteurDashboard = () => {
           </div>
         </div>
 
-        {/* MODALE DETAILS SOUHAITÉE */}
         {isDetailModalOpen && (
           <DetailVisitModal visit={selectedVisit} onClose={() => setIsDetailModalOpen(false)} onReschedule={(v) => { setIsDetailModalOpen(false); navigate('/create-visit', { state: { initialData: v } }); }} />
         )}
 
-        {/* MODALE CRÉATION */}
         {isModalOpen && (
           <CreateVisitModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); loadData(); if(refreshNotifs) refreshNotifs(); }} />
         )}
 
-        {/* MODALE BADGE NUMÉRIQUE PASS */}
         {selectedBadgeVisit && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="relative w-full max-w-sm">

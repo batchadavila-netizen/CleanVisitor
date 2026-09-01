@@ -5,7 +5,7 @@ using CleanVisitor.Application.Features.Users.Querries.LoginUser;
 using CleanVisitor.Application.Features.Users.Commande.ForgotPassword;
 using CleanVisitor.Application.Features.Users.Commande.ResetPassword;
 using Microsoft.AspNetCore.Authorization;
-
+using CleanVisitor.Application.Features.Users.Commande.GoogleLogin;
 [ApiController]
 [Route("api/auth")]
 public class AuthController : ControllerBase
@@ -59,5 +59,11 @@ public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand c
     if (!result)
         return BadRequest(new { message = "Token invalide ou expiré." });
     return Ok(new { message = "Mot de passe réinitialisé avec succès." });
+}
+[HttpPost("google-login")]
+public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginCommand command)
+{
+    var result = await _mediator.Send(command);
+    return Ok(result);
 }
 }

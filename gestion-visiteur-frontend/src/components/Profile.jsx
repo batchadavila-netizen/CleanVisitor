@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { User, Mail, Phone, Shield, Loader2, Save, Sparkles, CheckCircle2, Lock, Calendar, Activity, KeyRound, Clock } from 'lucide-react';
+import { fetchWithAuth } from '../services/apiClient';
+import { User, Mail, Phone, Shield, Loader2, Save, Sparkles, CheckCircle2, Lock, Clock } from 'lucide-react';
 
 const Profile = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -13,20 +14,11 @@ const Profile = () => {
 
     const hasChanges = JSON.stringify(user) !== JSON.stringify(formData);
 
-    // Mappage pour convertir l'ID numérique du rôle en Texte propre
-    // Nouvelle fonction 100% infaillible
     const parseRole = (rawRole) => {
-        // 1. Si c'est vide, on met Visiteur direct
         if (rawRole === undefined || rawRole === null || rawRole === '') return 'Visiteur';
-        
-        // 2. On convertit tout en texte minuscule pour être sûr
         const str = String(rawRole).toLowerCase().trim();
-        
-        // 3. On vérifie les cas Admin et Agent
         if (str === '1' || str.includes('admin')) return 'Admin';
         if (str === '2' || str.includes('agent')) return 'Agent';
-        
-        // 4. TOUT le reste (0, "0", 3, "3", "visiteur", etc.) devient 'Visiteur'
         return 'Visiteur';
     };
 
@@ -36,83 +28,85 @@ const Profile = () => {
 
     const fetchProfile = async () => {
         try {
+            setLoading(true);
             const userId = localStorage.getItem('userId');
-            const token = localStorage.getItem('token');
-            const localRole = localStorage.getItem('userRole'); // Récupéré de la connexion
+            const localRole = localStorage.getItem('userRole');
 
-            if (!userId || !token) {
+            if (!userId) {
                 setError("Session expirée. Veuillez vous reconnecter.");
-                setLoading(false);
                 return;
             }
 
-            const response = await fetch(`http://localhost:5283/api/user/profile/${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            // 🟢 Appel propre via fetchWithAuth sur la route profile
+            const data = await fetchWithAuth(`/api/user/profile/${userId}`);
+            
+            const rawRoleFromApi = data?.roleName ?? data?.role ?? data?.Role ?? localRole;
+            const cleanRole = parseRole(rawRoleFromApi);
 
-            if (response.ok) {
-                const data = await response.json();
-                
-                // On essaie de prendre le rôle de l'API, sinon on prend celui du localStorage
-                const rawRoleFromApi = data.roleName ?? data.role ?? data.Role ?? localRole;
-                const cleanRole = parseRole(rawRoleFromApi);
+            const fetchedUser = {
+                id: data?.id || data?.userId || userId,
+                nom: data?.nom || data?.lastName || '',
+                prenom: data?.prenom || data?.firstName || '',
+                email: data?.email || '',
+                telephone: data?.telephone || data?.phoneNumber || data?.phone || '',
+                role: cleanRole
+            };
 
-                const fetchedUser = {
-                    id: data.id || data.userId || '',
-                    nom: data.nom || data.lastName || '',
-                    prenom: data.prenom || data.firstName || '',
-                    email: data.email || '',
-                    telephone: data.telephone || data.phoneNumber || '',
-                    role: cleanRole
-                };
-                setUser(fetchedUser);
-                setFormData(fetchedUser);
-            } else {
-                setError(`Erreur serveur (${response.status}).`);
-            }
+            setUser(fetchedUser);
+            setFormData(fetchedUser);
         } catch (error) {
-            setError("Impossible de contacter le serveur.");
+            console.error("Erreur lors de la récupération du profil :", error);
+            setError("Impossible de charger les données du profil.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleSaveProfile = async () => {
-        if (!hasChanges) return;
-        setIsSaving(true);
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:5283/api/user`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    Id: formData.id,
-                    Nom: formData.nom,
-                    Prenom: formData.prenom,
-                    Email: formData.email,
-                    Telephone: formData.telephone
-                })
-            });
-
-            if (response.ok || response.status === 204) {
-                setUser(formData);
-                alert("Profil mis à jour avec succès !");
-            } else {
-                alert("Erreur lors de la sauvegarde du profil.");
-            }
-        } catch (error) {
-            alert("Erreur de connexion lors de la sauvegarde.");
-        } finally {
-            setIsSaving(false);
-        }
+  if (!hasChanges) return;
+  setIsSaving(true);
+  
+  try {
+    const payload = {
+      Id: parseInt(formData.id, 10),
+      Nom: formData.nom,
+      Prenom: formData.prenom,
+      Email: formData.email,
+      Telephone: formData.telephone // 🟢 On envoie explicitement 'Telephone'
     };
+
+    const updatedResponse = await fetchWithAuth('/api/user', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+
+    // 🟢 VÉRIFICATION CLEF : On extrait le téléphone quelle que soit la clé renvoyée
+    const savedPhone = updatedResponse?.telephone 
+      || updatedResponse?.phone 
+      || updatedResponse?.phoneNumber 
+      || formData.telephone;
+
+    const updatedUser = {
+      ...formData,
+      telephone: savedPhone
+    };
+
+    // Synchronisation de l'état React et de la mémoire locale
+    setUser(updatedUser);
+    setFormData(updatedUser);
+
+    const cachedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    localStorage.setItem('user', JSON.stringify({ ...cachedUser, ...updatedUser }));
+
+    alert("Profil mis à jour avec succès !");
+
+  } catch (error) {
+    console.error("Erreur mise à jour profil :", error);
+    alert("Erreur lors de la sauvegarde du profil.");
+  } finally {
+    setIsSaving(false);
+  }
+};
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -126,8 +120,8 @@ const Profile = () => {
     };
 
     const getInitials = () => {
-        const n = formData.nom?.charAt(0) || '';
         const p = formData.prenom?.charAt(0) || '';
+        const n = formData.nom?.charAt(0) || '';
         return `${p}${n}`.toUpperCase();
     };
 
@@ -151,7 +145,7 @@ const Profile = () => {
 
                 <div className="w-full flex flex-col gap-8">
                     
-                    {/* BLOC 1 : CARTE PRINCIPALE (EN-TÊTE + AVATAR + RÔLE CORRIGÉ) */}
+                    {/* CARTE PRINCIPALE */}
                     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col w-full">
                         
                         <div className="h-44 bg-slate-900 relative overflow-hidden">
@@ -170,14 +164,13 @@ const Profile = () => {
                                     {formData.prenom} {formData.nom}
                                 </h2>
                                 
-                                {/* BADGE DE RÔLE CORRIGÉ */}
                                 <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold border ${getRoleColor(user.role)}`}>
                                     <Shield size={16} />
                                     <span>Compte {user.role}</span>
                                 </div>
                             </div>
 
-                            {/* FORMULAIRE DE MODIFICATION PLEINE LARGEUR */}
+                            {/* FORMULAIRE DE MODIFICATION */}
                             <div className="pt-8 text-left">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                                     <div>
@@ -254,7 +247,7 @@ const Profile = () => {
                         </div>
                     </div>
 
-                    {/* BLOC 2 : NOUVEAU CONTENU POUR REMPLIR L'ESPACE (3 CARTES STATUT/RÉSUMÉ) */}
+                    {/* CARTES STATUT */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
                         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
                             <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
@@ -287,7 +280,7 @@ const Profile = () => {
                         </div>
                     </div>
 
-                    {/* BLOC 3 : BANNIÈRE SÉCURITÉ */}
+                    {/* BANNIÈRE SÉCURITÉ */}
                     <div className="bg-slate-900 rounded-3xl p-8 md:p-10 flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden w-full">
                         <div className="absolute right-0 top-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl -mr-20 -mt-20" />
                         <div className="flex items-center gap-5 relative z-10">

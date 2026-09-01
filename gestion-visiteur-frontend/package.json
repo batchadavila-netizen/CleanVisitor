@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.9",
+    "@clerk/localizations": "^4.15.7",
     "@hookform/resolvers": "^5.4.0",
     "@microsoft/signalr": "^10.0.0",
     "@tailwindcss/postcss": "^4.2.2",

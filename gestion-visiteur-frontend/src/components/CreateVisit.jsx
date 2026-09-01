@@ -8,45 +8,7 @@ import { ArrowLeft, Send, User, Clock, Info, Calendar, Building2, AlignLeft, Ale
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-const DEFAULT_SERVICES = ['Direction', 'Service RH', 'Service Financier', 'Service Informatique', 'Secrétariat'];
-
-const SERVICE_MAP = {
-  '1': 'Direction',
-  'direction': 'Direction',
-  
-  '2': 'Service RH',
-  'service_rh': 'Service RH',
-  'servicerh': 'Service RH',
-  'service rh': 'Service RH',
-  
-  '3': 'Service Financier',
-  'service_financier': 'Service Financier',
-  'servicefinancier': 'Service Financier',
-  'service financier': 'Service Financier',
-  
-  '4': 'Service Informatique',
-  'service_informatique': 'Service Informatique',
-  'serviceinformatique': 'Service Informatique',
-  'service informatique': 'Service Informatique',
-  
-  '5': 'Secrétariat',
-  'secrétariat': 'Secrétariat',
-  'secretariat': 'Secrétariat'
-};
-
-const SERVICE_ID_MAP = {
-  'Direction': 1,
-  'Service RH': 2,
-  'Service Financier': 3,
-  'Service Informatique': 4,
-  'Secrétariat': 5
-};
-
-const normalizeServiceKey = (val) => {
-  if (!val) return '';
-  return String(val).trim().toLowerCase();
-};
+import { useServices } from '../hooks/useServices';
 
 const schema = z.object({
   idVisitor: z.any().optional(),
@@ -76,6 +38,8 @@ const Field = ({ label, icon, error, children }) => (
 const CreateVisit = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const availableServices = useServices();
+
   const initialData = location.state?.initialData || location.state?.reprogramData || null;
   const selectedFromList = location.state?.selectedVisitor || null;
   const isReprogramMode = !!initialData;
@@ -87,20 +51,12 @@ const CreateVisit = () => {
   const [currentVisitorName, setCurrentVisitorName] = useState('');
   const userRole = localStorage.getItem('userRole');
 
-  const [dynamicServices] = useState(() => {
-    const saved = localStorage.getItem('companyServices');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return DEFAULT_SERVICES;
-  });
-
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     mode: 'onChange',
     defaultValues: {
       idVisitor: '',
-      service: '',
+      service: availableServices[0]?.id || '1',
       userId: '',
       date: new Date().toISOString().split('T')[0],
       heureArriver: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
@@ -108,12 +64,12 @@ const CreateVisit = () => {
     }
   });
 
-  const fetchAgentsByServiceName = useCallback(async (serviceName, targetUserId = null) => {
-    if (!serviceName) return;
+  const fetchAgentsByServiceId = useCallback(async (serviceId, targetUserId = null) => {
+    if (!serviceId) return;
     setLoadingAgents(true);
     try {
       const token = localStorage.getItem('token');
-      const encodedService = encodeURIComponent(serviceName);
+      const encodedService = encodeURIComponent(serviceId);
       const response = await fetch(`http://localhost:5283/api/User/agents-by-service/${encodedService}`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -149,16 +105,32 @@ const CreateVisit = () => {
     }
   }, [userRole]);
 
-  // INITIALISATION EN MODE REPROGRAMMATION OU CREATION
+  const getFallbackVisitorId = useCallback(() => {
+    const storedVisitorId = localStorage.getItem('visitorId');
+    const storedUserId = localStorage.getItem('userId');
+    const storedUserJson = localStorage.getItem('user');
+
+    if (storedVisitorId && storedVisitorId !== 'undefined') return storedVisitorId;
+    if (storedUserId && storedUserId !== 'undefined') return storedUserId;
+
+    if (storedUserJson) {
+      try {
+        const parsed = JSON.parse(storedUserJson);
+        return parsed.id || parsed.Id || parsed.visitorId || parsed.VisitorId || '';
+      } catch (e) { console.error(e); }
+    }
+    return '';
+  }, []);
+
   useEffect(() => {
     const initReprogram = async () => {
+      const fallbackId = getFallbackVisitorId();
+
       if (isReprogramMode && initialData) {
         let visitData = initialData;
-
         const hasHostId = initialData.userId || initialData.UserId || initialData.idUser || initialData.IdUser || initialData.hostId;
         const visitId = initialData.id || initialData.Id;
 
-        // Si l'hôte est absent de l'objet transmis, interroger le Backend
         if (!hasHostId && visitId) {
           try {
             const token = localStorage.getItem('token');
@@ -177,39 +149,24 @@ const CreateVisit = () => {
               if (fetched) visitData = fetched;
             }
           } catch (err) {
-            console.error("Erreur de récupération HTTP directe :", err);
+            console.error("Erreur récupération visite :", err);
           }
         }
 
-        const visitorIdFound = visitData.idVisitor || visitData.IdVisitor || visitData.visitorId || visitData.VisitorId || localStorage.getItem('visitorId');
-        
-        const rawService = visitData.service ?? visitData.Service;
-        const key = normalizeServiceKey(rawService);
-        const normalizedService = SERVICE_MAP[key] || SERVICE_MAP[String(rawService)] || String(rawService || dynamicServices[0]);
-
-        const hostIdFound = 
-          visitData.userId ?? 
-          visitData.UserId ?? 
-          visitData.idUser ?? 
-          visitData.IdUser ?? 
-          visitData.idAgent ?? 
-          visitData.IdAgent ?? 
-          visitData.hostId ?? 
-          visitData.HostId ?? 
-          visitData.hoteId ?? 
-          visitData.HoteId ?? 
-          '';
+        const visitorIdFound = visitData.idVisitor || visitData.IdVisitor || visitData.visitorId || visitData.VisitorId || fallbackId;
+        const rawService = String((visitData.service ?? visitData.Service ?? availableServices[0]?.id) || '1');
+        const hostIdFound = visitData.userId ?? visitData.UserId ?? visitData.idUser ?? visitData.IdUser ?? '';
 
         reset({
           motif: visitData.motif || visitData.Motif || '',
-          service: normalizedService,
+          service: rawService,
           userId: String(hostIdFound),
           heureArriver: (visitData.heureArriver || visitData.HeureArriver || '').substring(0, 5),
           date: (visitData.date || visitData.Date || '').split('T')[0],
           idVisitor: String(visitorIdFound || '')
         });
 
-        fetchAgentsByServiceName(normalizedService, hostIdFound);
+        fetchAgentsByServiceId(rawService, hostIdFound);
 
         const nomVisitor = visitData.nom_visitor || visitData.Nom_visitor || visitData.nomVisitor;
         const prenomVisitor = visitData.prenom_visitor || visitData.Prenom_visitor || visitData.prenomVisitor || '';
@@ -221,30 +178,43 @@ const CreateVisit = () => {
           setCurrentVisitorName(storedName || (visitorIdFound ? `Visiteur N° ${visitorIdFound}` : "Visiteur"));
         }
       } else if (selectedFromList) {
-        setValue('idVisitor', String(selectedFromList.id));
+        const vId = String(selectedFromList.id || selectedFromList.Id);
+        setValue('idVisitor', vId);
+        setCurrentVisitorName(`${selectedFromList.prenom || ''} ${selectedFromList.nom || ''}`.trim());
       } else {
-        const defaultService = dynamicServices[0] || '';
+        const defaultService = availableServices[0]?.id || '1';
         setValue('service', defaultService);
-        fetchAgentsByServiceName(defaultService);
+        setValue('idVisitor', String(fallbackId));
+        
+        const storedName = localStorage.getItem('userName');
+        setCurrentVisitorName(storedName || "Visiteur Connecté");
+        
+        fetchAgentsByServiceId(defaultService);
       }
     };
 
     initReprogram();
-  }, [isReprogramMode, initialData, selectedFromList, dynamicServices, reset, setValue, fetchAgentsByServiceName]);
+  }, [isReprogramMode, initialData, selectedFromList, availableServices, reset, setValue, fetchAgentsByServiceId, getFallbackVisitorId]);
 
   const onSubmit = async (data) => {
     const visitId = initialData?.id || initialData?.Id;
-    const serviceId = SERVICE_ID_MAP[data.service] || parseInt(data.service, 10) || 1;
+    const serviceId = parseInt(data.service, 10) || 1;
+    const resolvedVisitorId = parseInt(data.idVisitor, 10) || parseInt(getFallbackVisitorId(), 10) || 0;
+
+    if (!resolvedVisitorId) {
+      toast.error("Profil introuvable. Veuillez vous re-connecter.");
+      return;
+    }
 
     const payload = {
-      Id: Number(visitId),
+      Id: Number(visitId) || 0,
       Motif: data.motif,
       Service: serviceId,
       UserId: data.userId ? parseInt(data.userId, 10) : null,
       Date: data.date,
       HeureArriver: data.heureArriver.length === 5 ? `${data.heureArriver}:00` : data.heureArriver,
       Statut: isReprogramMode ? 2 : 1,
-      IdVisitor: parseInt(data.idVisitor, 10) || 0,
+      IdVisitor: resolvedVisitorId,
       UpdatedByRole: userRole || "Admin"
     };
 
@@ -260,9 +230,8 @@ const CreateVisit = () => {
       else if (userRole === 'Agent') navigate('/visitors', { replace: true });
       else navigate('/dashboard', { replace: true });
     } catch (err) {
-      console.error("Erreur réservation/reprogrammation :", err);
+      console.error("Erreur réservation :", err);
 
-      // ATTRAPAGE ET AFFICHAGE DU MESSAGE BACKEND (Créneau occupé ou visite terminée)
       const serverMessage = 
         err.response?.data?.message || 
         err.response?.data?.Message || 
@@ -324,13 +293,13 @@ const CreateVisit = () => {
                 </div>
               )}
 
-              {/* VISITEUR CONCERNÉ */}
               <Field label="Visiteur concerné" icon={<User size={14} className="text-blue-600" />} error={errors.idVisitor?.message}>
-                {isReprogramMode ? (
-                  <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 text-xs">
-                    {currentVisitorName || 'Chargement...'}
+                {isReprogramMode || userRole === 'Visiteur' ? (
+                  <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 text-xs flex justify-between items-center">
+                    <span>{currentVisitorName || 'Visiteur Connecté'}</span>
+                    <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">Compte Actif</span>
                   </div>
-                ) : userRole !== 'Visiteur' ? (
+                ) : (
                   <select 
                     {...register('idVisitor')}
                     className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-slate-800 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-all ${
@@ -342,14 +311,9 @@ const CreateVisit = () => {
                       <option key={v.id || v.Id} value={String(v.id || v.Id)}>{v.nom || v.Nom} {v.prenom || v.Prenom}</option>
                     ))}
                   </select>
-                ) : (
-                  <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 text-xs">
-                    {currentVisitorName || 'Chargement...'}
-                  </div>
                 )}
               </Field>
 
-              {/* SERVICE DYNAMIQUE & HÔTE */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Service à visiter" icon={<Building2 size={14} className="text-blue-600" />} error={errors.service?.message}>
                   <select 
@@ -358,7 +322,7 @@ const CreateVisit = () => {
                     onChange={(e) => {
                       setValue('service', e.target.value);
                       setValue('userId', '');
-                      fetchAgentsByServiceName(e.target.value);
+                      fetchAgentsByServiceId(e.target.value);
                     }}
                     className={`w-full border rounded-2xl px-4 py-3 text-xs font-semibold outline-none transition-all ${
                       isReprogramMode 
@@ -368,13 +332,12 @@ const CreateVisit = () => {
                           : 'bg-slate-50 border-slate-200 text-slate-800 cursor-pointer'
                     }`}
                   >
-                    {dynamicServices.map((srv, idx) => (
-                      <option key={idx} value={srv}>{srv}</option>
+                    {availableServices.map((srv) => (
+                      <option key={srv.id} value={srv.id}>{srv.label}</option>
                     ))}
                   </select>
                 </Field>
 
-                {/* SÉLECTEUR DE L'HÔTE */}
                 <Field label="Personne à visiter (Hôte)" icon={<UserCheck size={14} className="text-blue-600" />} error={errors.userId?.message}>
                   <select 
                     {...register('userId')} 
@@ -402,7 +365,6 @@ const CreateVisit = () => {
                 </Field>
               </div>
 
-              {/* DATE ET HEURE */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Date prévue" icon={<Calendar size={14} className="text-blue-600" />} error={errors.date?.message}>
                   <input 
@@ -426,7 +388,6 @@ const CreateVisit = () => {
                 </Field>
               </div>
 
-              {/* MOTIF DE LA VISITE */}
               <Field label="Motif de la visite" icon={<AlignLeft size={14} className="text-blue-600" />} error={errors.motif?.message}>
                 <textarea 
                   {...register('motif')}
@@ -443,7 +404,6 @@ const CreateVisit = () => {
                 />
               </Field>
 
-              {/* BOUTON DE SOUMISSION */}
               <div className="pt-2">
                 <button 
                   type="submit" 

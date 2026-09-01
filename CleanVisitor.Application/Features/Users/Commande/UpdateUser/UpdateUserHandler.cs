@@ -3,22 +3,45 @@ using AutoMapper;
 using CleanVisitor.Core.Entities.User;
 using CleanVisitor.Application.Features.Users.Dtos;
 using CleanVisitor.Application.Features.Users.Interfaces;
+using CleanVisitor.Core.Enum.ServiceVisitor;
 using CleanVisitor.Application.Features.Users.Commande.UpdateUser.UpdateUserCommand;
+
 namespace CleanVisitor.Application.Feautures.Users.Commande.CommandHandler.UpdateUserHandler;
-public class UpdateUserHandler:IRequestHandler<UpdateUserCommand, UserDto?>
+
+public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, UserDto?>
 {
     private readonly IUserRepository _repository;
-    private readonly IMapper _mapper;
-    public UpdateUserHandler(IUserRepository repository, IMapper mapper)
+
+    public UpdateUserHandler(IUserRepository repository)
     {
-        _repository=repository;
-        _mapper=mapper;
+        _repository = repository;
     }
-    public async Task<UserDto?>Handle(UpdateUserCommand request, CancellationToken cancellationToken)
+
+    public async Task<UserDto?> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
-        var user=_mapper.Map<User?>(request);
-        if (user== null) return null;
-         await _repository.UpdateAsync(user);
-         return _mapper.Map<UserDto>(user);
+        var existingUserDto = await _repository.GetByIdAsync(request.Id);
+        if (existingUserDto == null) return null;
+
+      
+        ServiceVisitor? targetService = null;
+        if (!string.IsNullOrEmpty(request.Service) && Enum.TryParse<ServiceVisitor>(request.Service, true, out var parsedService))
+        {
+            targetService = parsedService;
+        }
+
+        var user = new User
+        {
+            Id = request.Id,
+            Nom = request.Nom,
+            Prenom = request.Prenom,
+            Email = request.Email,
+            Telephone = request.Telephone,
+            Role = request.Role,
+            Service = targetService,
+            IsActive = request.IsActive,
+            PasswordHash = string.IsNullOrEmpty(request.PasswordHash) ? existingUserDto.PasswordHash : request.PasswordHash
+        };
+
+        return await _repository.UpdateAsync(user);
     }
 }

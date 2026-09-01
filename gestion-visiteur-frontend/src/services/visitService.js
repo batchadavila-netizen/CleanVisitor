@@ -1,103 +1,79 @@
-import axios from 'axios';
-
-const API_URL = "http://localhost:5283/api/Visit";
-
-// Helper pour récupérer le token
-const getAuthHeader = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-});
+import { fetchWithAuth } from './apiClient';
 
 export const visitService = {
-    // 1. Créer une visite
-    create: async (visitData) => {
-        const response = await axios.post(API_URL, visitData, getAuthHeader());
-        return response.data;
-    },
+    // 🟢 1. Création de visite (/api/Visit)
+    create: (visitData) => fetchWithAuth('/api/Visit', {
+        method: 'POST',
+        body: JSON.stringify(visitData)
+    }),
 
-    // 2. Récupérer toutes les visites
+    // 🟢 2. Récupération globale (/api/Visit)
     getAll: async () => {
-        const response = await axios.get(API_URL, getAuthHeader()); 
-        return response.data?.$values || response.data;
+        const data = await fetchWithAuth('/api/Visit');
+        return data?.$values || data;
     },
 
-    // 3. Récupérer les visites d'un utilisateur (🟢 URL CORRIGÉE)
+    // 🟢 3. Visites d'un visiteur spécifique (/api/Visit/user/{userId})
     getVisitorVisit: async (userId) => {
-        const response = await axios.get(`${API_URL}/user/${userId}`, getAuthHeader());
-        return response.data?.$values || response.data;
+        const data = await fetchWithAuth(`/api/Visit/user/${userId}`);
+        return data?.$values || data;
     },
 
-    // 4. Mise à jour complète (Reprogrammation)
+    // 🟢 4. Mise à jour d'une visite (/api/Visit)
     updateVisit: async (id, data) => {
         try {
-            const response = await axios.put(API_URL, data, getAuthHeader());
-            return response.data;
+            return await fetchWithAuth('/api/Visit', {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
         } catch (error) {
-            console.error("Erreur PUT:", error.response);
+            console.error("Erreur PUT:", error);
             throw error;
         }
     },
 
-    // 5. MAJ du statut (Patch)
+    // 🟢 5. Changement de statut (/api/Visit/{id}/status)
     updateVisitStatus: async (id, newStatus) => {
         try {
-            const response = await axios.patch(`${API_URL}/${id}/status`, {
-                statut: parseInt(newStatus, 10)
-            }, getAuthHeader());
-            
-            return response.data;
+            return await fetchWithAuth(`/api/Visit/${id}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ statut: parseInt(newStatus, 10) })
+            });
         } catch (error) {
             console.error("Erreur lors de la mise à jour du statut :", error);
             throw error;
         }
     },
 
-    // 6. Récupérer par date (pour les créneaux)
+    // 🟢 6. Visites par date (/api/Visit/{date})
     getByDate: async (date) => {
-        const response = await axios.get(`${API_URL}/${date}`, getAuthHeader());
-        const data = response.data;
+        const data = await fetchWithAuth(`/api/Visit/${date}`);
         return data?.$values || data?.value || (Array.isArray(data) ? data : []);
     },
 
-    // 7. Récupérer les visites d'un service
+    // 🟢 7. Visites par service (/api/Visit/service/{service})
     getMyServiceVisits: async () => {
-        const token = localStorage.getItem('token');
         const userService = localStorage.getItem('userService') || '5';
 
         try {
-            const response = await fetch(`${API_URL}/service/${userService}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                return await response.json();
-            }
+            return await fetchWithAuth(`/api/Visit/service/${userService}`);
         } catch (error) {
-            console.error("Erreur d'accès à l'API service :", error);
+            console.error("Erreur d'accès à l'API service, bascule sur la liste globale:", error);
         }
 
-        // Fallback sur la liste globale si l'endpoint échoue
-        const fallbackResponse = await fetch(API_URL, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        try {
+            const allVisits = await fetchWithAuth('/api/Visit');
+            const visitsArray = allVisits?.$values || allVisits || [];
+
+            if (userService !== '5') {
+                return visitsArray.filter(visit => 
+                    String(visit.serviceId || visit.service || visit.hostService) === String(userService)
+                );
             }
-        });
-
-        if (!fallbackResponse.ok) return [];
-        
-        const allVisits = await fallbackResponse.json();
-
-        if (userService !== '5') {
-            return allVisits.filter(visit => 
-                String(visit.serviceId || visit.service || visit.hostService) === String(userService)
-            );
+            return visitsArray;
+        } catch (fallbackError) {
+            console.error("Erreur fallback:", fallbackError);
+            return [];
         }
-
-        return allVisits;
     }
 };

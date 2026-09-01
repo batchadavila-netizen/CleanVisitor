@@ -2,31 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { configService } from '../services/configService';
 import { 
+  UserButton, 
+  useUser, 
+  useClerk 
+} from '@clerk/clerk-react';
+import { 
   LayoutDashboard, 
   Users, 
   CheckSquare, 
   FileText, 
-  User, 
+  User as UserIcon, 
   Settings, 
   LogOut, 
   ChevronLeft, 
-  ChevronRight 
+  ChevronRight,
+  LogIn
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const role = localStorage.getItem('userRole') || 'Visiteur';
-  const userName = localStorage.getItem('userName') || 'Utilisateur';
 
-  // État local du nom d'entreprise
+  const { user, isSignedIn: isClerkSignedIn } = useUser();
+  const { signOut } = useClerk();
+  
+  const localRole = localStorage.getItem('userRole');
+  const localName = localStorage.getItem('userName');
+  const localToken = localStorage.getItem('token') || localStorage.getItem('userToken');
+  const isLocallySignedIn = Boolean(localRole || localToken);
+
+  const isAuthenticated = isClerkSignedIn || isLocallySignedIn;
+
+  // Priorité d'affichage du rôle : Local Storage -> Clerk -> 'Visiteur' par défaut
+  const role = localRole || user?.publicMetadata?.role || 'Visiteur';
+  const userName = localName || user?.fullName || user?.firstName || 'Utilisateur';
+
   const [companyName, setCompanyName] = useState(
     localStorage.getItem('companyName') || 'Davila Entreprise'
   );
 
   useEffect(() => {
-    // 1. Récupération asynchrone depuis l'API / Base de données SQL Server
     const fetchConfig = async () => {
       const data = await configService.getConfig();
       if (data && data.companyName) {
@@ -36,7 +51,6 @@ const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
 
     fetchConfig();
 
-    // 2. Écouteurs pour la mise à jour dynamique (quand l'Admin enregistre)
     const handleConfigUpdate = () => {
       const updatedName = localStorage.getItem('companyName');
       if (updatedName) setCompanyName(updatedName);
@@ -51,7 +65,6 @@ const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
     };
   }, [location.pathname]);
 
-  // Génération des initiales (ex: "Davila Entreprise" -> "DE")
   const getInitials = (name) => {
     if (!name) return 'DE';
     const words = name.trim().split(' ').filter(Boolean);
@@ -78,28 +91,30 @@ const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
       roles: ['Visiteur'],
       showBadge: true 
     },
-    { name: 'Mon Profil', path: '/profile', icon: User, roles: ['Admin', 'Agent', 'Visiteur'] },
+    { name: 'Mon Profil', path: '/profile', icon: UserIcon, roles: ['Admin', 'Agent', 'Visiteur'] },
     { name: 'Paramètres', path: '/settings', icon: Settings, roles: ['Admin'] },
   ];
 
-  // Déconnexion propre sans perdre la configuration système
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const currentCompany = localStorage.getItem('companyName');
     const currentServices = localStorage.getItem('companyServices');
 
-    localStorage.clear(); // Efface le token et la session
+    if (isClerkSignedIn) {
+      await signOut();
+    }
 
-    // Restaure les éléments globaux de l'entreprise
+    localStorage.clear();
+
     if (currentCompany) localStorage.setItem('companyName', currentCompany);
     if (currentServices) localStorage.setItem('companyServices', currentServices);
 
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (
     <div className={`${isOpen ? 'w-64' : 'w-20'} bg-slate-900 h-screen flex flex-col border-r border-slate-800 fixed left-0 top-0 z-50 transition-all duration-300 font-sans`}>
       
-      {/* Header avec Logo et Nom Dynamiques */}
+      {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="bg-blue-600 min-w-[40px] h-10 rounded-xl flex items-center justify-center text-white font-black text-xs tracking-wider">
@@ -158,25 +173,46 @@ const Sidebar = ({ isOpen, toggleSidebar, pendingVisits = 0 }) => {
           })}
       </nav>
 
-      {/* Profil Footer */}
+      {/* Footer Profil */}
       <div className="p-4 border-t border-slate-800 bg-slate-900/50">
-        <div className="flex items-center gap-3 mb-4 px-1">
-          <div className="min-w-[32px] h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-[11px] font-bold text-blue-400 border border-blue-500/30">
-            {userName.charAt(0).toUpperCase()}
-          </div>
-          {isOpen && (
-            <div className="overflow-hidden">
-              <p className="text-white text-xs font-bold truncate">{userName}</p>
-              <p className="text-blue-400 text-[10px] font-medium uppercase tracking-wider">{role}</p>
+        {isAuthenticated ? (
+          <>
+            <div className="flex items-center gap-3 mb-4 px-1">
+              {isClerkSignedIn ? (
+                <UserButton afterSignOutUrl="/login" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {getInitials(userName)}
+                </div>
+              )}
+              
+              {isOpen && (
+                <div className="overflow-hidden">
+                  <p className="text-white text-xs font-bold truncate">{userName}</p>
+                  <p className="text-blue-400 text-[10px] font-medium uppercase tracking-wider">{role}</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-bold transition-colors">
-          <LogOut size={18} className="shrink-0" />
-          {isOpen && "Déconnexion"}
-        </button>
+            
+            <button 
+              onClick={handleLogout} 
+              className="w-full flex items-center gap-3 p-3 text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-bold transition-colors"
+            >
+              <LogOut size={18} className="shrink-0" />
+              {isOpen && "Déconnexion"}
+            </button>
+          </>
+        ) : (
+          <button 
+            onClick={() => navigate('/login')}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+          >
+            <LogIn size={16} />
+            {isOpen && "Se connecter"}
+          </button>
+        )}
       </div>
+
     </div>
   );
 };

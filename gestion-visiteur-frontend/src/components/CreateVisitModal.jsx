@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { visitService } from '../services/visitService';
 import toast, { Toaster } from 'react-hot-toast';
 import { X, Send, User, Calendar, Clock, Building2, AlignLeft, UserCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-const DEFAULT_SERVICES = ['Direction', 'Service RH', 'Service Financier', 'Service Informatique', 'Secrétariat'];
+import { useServices } from '../hooks/useServices';
 
 const schema = z.object({
   date: z.string().min(1, "La date est obligatoire"),
@@ -17,31 +16,34 @@ const schema = z.object({
 });
 
 const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
-  const storedVisitorId = localStorage.getItem('visitorId');
-  const storedVisitorName = localStorage.getItem('userName') || "Visiteur";
   const isEditMode = !!initialData;
-
+  const availableServices = useServices();
   const [serviceAgents, setServiceAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
+  const [visitorDisplayName, setVisitorDisplayName] = useState("Visiteur");
 
-  const [dynamicServices, setDynamicServices] = useState(() => {
-    const saved = localStorage.getItem('companyServices');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  const getResolvedVisitorId = useCallback(() => {
+    const vId = localStorage.getItem('visitorId');
+    const uId = localStorage.getItem('userId');
+    const uJson = localStorage.getItem('user');
+
+    if (vId && vId !== 'undefined' && vId !== 'null') return parseInt(vId, 10);
+    if (uId && uId !== 'undefined' && uId !== 'null') return parseInt(uId, 10);
+    
+    if (uJson) {
+      try {
+        const parsed = JSON.parse(uJson);
+        const candidate = parsed.id || parsed.Id || parsed.visitorId || parsed.VisitorId;
+        if (candidate) return parseInt(candidate, 10);
+      } catch (e) { console.error(e); }
     }
-    return DEFAULT_SERVICES;
-  });
+    return 0;
+  }, []);
 
   useEffect(() => {
-    const handleConfigChange = () => {
-      const saved = localStorage.getItem('companyServices');
-      if (saved) {
-        try { setDynamicServices(JSON.parse(saved)); } catch (e) { console.error(e); }
-      }
-    };
-    window.addEventListener('configUpdated', handleConfigChange);
-    return () => window.removeEventListener('configUpdated', handleConfigChange);
-  }, []);
+    const name = localStorage.getItem('userName');
+    if (name) setVisitorDisplayName(name);
+  }, [isOpen]);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
@@ -49,7 +51,7 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       heureArriver: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      service: dynamicServices[0] || '',
+      service: availableServices[0]?.id || '1',
       userId: '',
       motif: ''
     }
@@ -57,7 +59,6 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
 
   const selectedService = watch('service');
 
-  // 🟢 RECUPERATION DYNAMIQUE DES AGENTS
   useEffect(() => {
     if (!isOpen || !selectedService) {
       setServiceAgents([]);
@@ -84,7 +85,7 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
           setServiceAgents([]);
         }
       } catch (error) {
-        console.error("Erreur lors de la récupération des agents du service :", error);
+        console.error("Erreur récupération des agents :", error);
         setServiceAgents([]);
       } finally {
         setLoadingAgents(false);
@@ -99,7 +100,7 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
       if (isEditMode && initialData) {
         reset({
           motif: initialData.motif || initialData.Motif || '',
-          service: String(initialData.service || initialData.Service || dynamicServices[0]),
+          service: String(initialData.service || initialData.Service || availableServices[0]?.id || '1'),
           userId: String(initialData.userId || initialData.UserId || ''),
           heureArriver: (initialData.heureArriver || initialData.HeureArriver || '').substring(0, 5),
           date: (initialData.date || initialData.Date || '').split('T')[0]
@@ -107,39 +108,31 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
       } else {
         reset({
           motif: '',
-          service: dynamicServices[0] || '',
+          service: availableServices[0]?.id || '1',
           userId: '',
           heureArriver: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
           date: new Date().toISOString().split('T')[0]
         });
       }
     }
-  }, [isOpen, isEditMode, initialData, reset, dynamicServices]);
-
-  // Mapping des libellés de service vers leurs ID numériques BDD
-  const SERVICE_ID_MAP = {
-    'Direction': 1,
-    'Service RH': 2,
-    'Service Financier': 3,
-    'Service Informatique': 4,
-    'Secrétariat': 5
-  };
+  }, [isOpen, isEditMode, initialData, reset, availableServices]);
 
   const onSubmit = async (data) => {
-    if (!storedVisitorId) {
-      toast.error("Profil visiteur non trouvé. Veuillez vous reconnecter.");
+    const finalVisitorId = getResolvedVisitorId();
+
+    if (!finalVisitorId) {
+      toast.error("Profil non identifié. Veuillez vous reconnecter.");
       return;
     }
-    const fromInitialData = initialData?.idVisitor || initialData?.IdVisitor;
-    const resolvedVisitorId = (fromInitialData && fromInitialData !== 0) ? fromInitialData : parseInt(storedVisitorId, 10);
 
-    const serviceId = SERVICE_ID_MAP[data.service] || parseInt(data.service, 10) || 1;
+    const serviceId = parseInt(data.service, 10) || 1;
+    const parsedUserId = data.userId ? parseInt(data.userId, 10) : null;
 
     const payload = {
       motif: data.motif,
-      idVisitor: resolvedVisitorId,
+      idVisitor: finalVisitorId,
       service: serviceId,
-      userId: data.userId ? parseInt(data.userId, 10) : null,
+      userId: (parsedUserId && !isNaN(parsedUserId)) ? parsedUserId : null,
       heureArriver: data.heureArriver.length === 5 ? `${data.heureArriver}:00` : data.heureArriver,
       date: data.date,
       statut: 1,
@@ -156,12 +149,12 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
         await visitService.create(payload);
         toast.success("Demande envoyée avec succès !");
       }
-      onSuccess();
-      onClose();
+      
+      if (onSuccess) onSuccess();
+      if (onClose) onClose();
     } catch (err) {
       console.error("Erreur API:", err);
 
-      // 🟢 ATTRAPAGE EXPLICITE DU MESSAGE D'ERREUR BACKEND (CRÉNEAU OCCUPÉ)
       const serverMessage = 
         err.response?.data?.message || 
         err.response?.data?.Message || 
@@ -189,8 +182,6 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 font-sans">
       <Toaster position="top-right" />
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-xl border border-slate-100 flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-        
-        {/* EN-TÊTE MODALE */}
         <div className="flex justify-between items-center px-6 py-5 bg-slate-900 text-white shrink-0">
           <div>
             <h2 className="text-base font-bold tracking-tight">
@@ -207,20 +198,16 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
           </button>
         </div>
 
-        {/* FORMULAIRE COMPACT */}
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-6 space-y-4">
-          
-          {/* IDENTITÉ */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <User size={13} className="text-blue-600" /> Identité du demandeur
             </label>
             <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-slate-800 font-bold text-xs">
-              {storedVisitorName}
+              {visitorDisplayName}
             </div>
           </div>
 
-          {/* DATE & HEURE */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
@@ -252,7 +239,6 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
             </div>
           </div>
 
-          {/* SERVICE DYNAMIQUE */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <Building2 size={13} className="text-blue-600" /> Service concerné
@@ -267,14 +253,13 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
                 errors.service ? 'border-rose-400 bg-rose-50' : 'border-slate-200'
               }`}
             >
-              {dynamicServices.map((srv, idx) => (
-                <option key={idx} value={srv}>{srv}</option>
+              {availableServices.map((srv) => (
+                <option key={srv.id} value={srv.id}>{srv.label}</option>
               ))}
             </select>
             {errors.service && <p className="text-[10px] text-rose-500 mt-1 font-semibold">⚠️ {errors.service.message}</p>}
           </div>
 
-          {/* PERSONNE À VISITER */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <UserCheck size={13} className="text-blue-600" /> Personne à visiter (Hôte)
@@ -288,14 +273,13 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
                 {loadingAgents ? "Chargement des hôtes..." : "-- Tout le département / Aucun hôte spécifique --"}
               </option>
               {serviceAgents.map(agent => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.prenom} {agent.nom}
+                <option key={agent.id || agent.Id} value={agent.id || agent.Id}>
+                  {agent.prenom || agent.Prenom} {agent.nom || agent.Nom}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* MOTIF */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <AlignLeft size={13} className="text-blue-600" /> Motif de la visite
@@ -311,7 +295,6 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
             {errors.motif && <p className="text-[10px] text-rose-500 mt-1 font-semibold">⚠️ {errors.motif.message}</p>}
           </div>
 
-          {/* BOUTONS D'ACTION */}
           <div className="flex gap-2.5 pt-2 border-t border-slate-100">
             <button 
               type="button" 
@@ -329,7 +312,6 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
               {isSubmitting ? "Envoi en cours..." : isEditMode ? "Enregistrer les modifications" : "Confirmer la demande"}
             </button>
           </div>
-
         </form>
       </div>
     </div>

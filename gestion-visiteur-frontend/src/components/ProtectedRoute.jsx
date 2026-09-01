@@ -1,23 +1,45 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useUser, useAuth } from '@clerk/clerk-react';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const location = useLocation();
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('userRole');
-  const userService = String(localStorage.getItem('userService') || '5').toLowerCase();
+  
+  // 1. Récupération de l'état d'authentification Clerk
+  const { user, isLoaded } = useUser();
+  const { isSignedIn } = useAuth();
 
-  // 1. Redirection si l'utilisateur n'est pas authentifié
-  if (!token || !role) {
+  // Attendre le chargement de la session Clerk
+  if (!isLoaded) {
+    return (
+      <div className="h-screen bg-slate-900 flex items-center justify-center text-white font-bold">
+        Chargement de la session...
+      </div>
+    );
+  }
+
+  // 2. Extraire les rôles (Priorité Clerk -> puis localStorage)
+  const tokenLocal = localStorage.getItem('token');
+  const roleLocal = localStorage.getItem('userRole');
+  
+  const isAuthenticated = isSignedIn || !!tokenLocal;
+  const role = user?.publicMetadata?.role || roleLocal || 'Visiteur';
+  const userService = String(
+    user?.publicMetadata?.service || localStorage.getItem('userService') || '5'
+  ).toLowerCase();
+
+  // 3. Redirection si l'utilisateur n'est pas authentifié
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. Vérification du rôle global (Admin, Agent, Visiteur)
+  // 4. Vérification du rôle global (Admin, Agent, Visiteur)
   if (allowedRoles && !allowedRoles.includes(role)) {
-    return <Navigate to="/login" replace />;
+    // Si pas autorisé, on redirige vers son espace plutôt que d'expulser vers /login
+    return <Navigate to={role === 'Visiteur' ? "/mon-espace" : "/agent-dashboard"} replace />;
   }
 
-  // 3. AIGUILLAGE SPÉCIFIQUE AGENT :
+  // 5. AIGUILLAGE SPÉCIFIQUE AGENT :
   // Si un Agent tente d'accéder au tableau de bord général (/dashboard)
   if ((role === 'Agent' || role === '2') && location.pathname === '/dashboard') {
     // Seul le Secrétariat (5) a le droit de rester sur /dashboard

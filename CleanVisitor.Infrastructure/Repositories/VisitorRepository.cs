@@ -159,38 +159,36 @@ public async Task<VisitorVisitDto?> GetVisitorVisitAsync(int Id)
 {
     using var connection = new SqlConnection(_connectionString);
     
-    // On garde une trace du visiteur unique
     VisitorVisitDto? visitorDto = null;
 
+    // 🟢 CORRECTION : Jointure sur [User] au lieu de Visitors
     var sql = @"
     SELECT 
-        vi.Nom, vi.Telephone, vi.Email, vi.DateEnregistrement, 
+        u.Nom, u.Telephone, u.Email, u.DateEnregistrement, 
         v.Id, v.IdVisitor, v.Motif, v.Date, v.HeureDepart, v.HeureArriver, v.Statut, v.Service
-    FROM Visitors vi
-    INNER JOIN Visit v ON vi.Id = v.IdVisitor
-    WHERE vi.Id = @Id AND v.IsDeleted = 0";
+    FROM [User] u
+    INNER JOIN [Visit] v ON u.Id = v.IdVisitor
+    WHERE u.Id = @Id AND v.IsDeleted = 0";
 
     await connection.QueryAsync<VisitorVisitDto, VisitClonDto, VisitorVisitDto>(
         sql,
         (visitor, visit) => 
         {
-            // Initialisation du parent au premier passage
             if (visitorDto == null) 
             {
                 visitorDto = visitor;
                 visitorDto.ListVisitClon = new List<VisitClonDto>();
             }
             
-            // Ajout de la visite à la liste du parent
             if (visit != null) 
             {
                 visitorDto.ListVisitClon.Add(visit);
             }
             
-            return visitor; // Dapper attend un retour, mais on utilise surtout visitorDto
+            return visitor;
         },
         new { Id = Id },
-        splitOn: "Motif" 
+        splitOn: "Id" // 🟢 SPLITON SUR L'ID DE LA VISITE
     );
 
     return visitorDto;

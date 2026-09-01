@@ -32,7 +32,7 @@ public class UpdateVisitStatusCommandHandler : IRequestHandler<UpdateVisitStatus
 
     public async Task<bool> Handle(UpdateVisitStatusCommand request, CancellationToken cancellationToken)
     {
-        // 1. Récupérer la visite
+        // 1. Récupérer la visite (qui utilise désormais LEFT JOIN [User] dans le VisitRepository)
         var visit = await _visitRepository.GetByIdAsync(request.Id);
         if (visit == null) return false;
 
@@ -51,58 +51,75 @@ public class UpdateVisitStatusCommandHandler : IRequestHandler<UpdateVisitStatus
                 _ => "mise à jour"
             };
 
-            string notificationMessage = $"Votre visite est désormais {statusLabel}.";
+            string notificationMessage = $"Votre visite du {visit.Date:dd/MM/yyyy} est désormais {statusLabel}.";
 
-            // A. Notification en base
-            await _notificationRepository.AddAsync(new Notification
+            // A. Sauvegarde de la notification en BDD
+            try
             {
-                IdVisitor = visit.IdVisitor,
-                Message = notificationMessage,
-                DateEnvoi = DateTime.Now,
-                Type = "STATUS_UPDATE",
-                IsRead = false
-            });
+                await _notificationRepository.AddAsync(new Notification
+                {
+                    IdVisitor = visit.IdVisitor,
+                    Message = notificationMessage,
+                    DateEnvoi = DateTime.Now,
+                    Type = "STATUS_UPDATE",
+                    IsRead = false,
+                    ReceiverRole = "Visiteur"
+                });
+                Console.WriteLine("✅ Notification enregistrée en BDD.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NOTIFICATION ERROR] {ex.Message}");
+            }
 
-            // B. Email si adresse disponible
-            // 🔥 FIX : bons noms de clés
+            // B. Envoi temps réel SignalR (Front-end Toast / Live Update)
+            try
+            {
+                string targetEmail = visit.Email_visitor ?? "";
+                await _signalRService.SendStatusUpdateAsync(targetEmail, notificationMessage, "STATUS_UPDATE");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SIGNALR ERROR] {ex.Message}");
+            }
+
+            // C. Envoi de l'Email au visiteur
             var smtpEmail    = _configuration["EmailCommand:Email"];
             var smtpPassword = _configuration["EmailCommand:Password"];
             var smtpHost     = _configuration["EmailCommand:Host"];
             var smtpPort     = int.Parse(_configuration["EmailCommand:Port"] ?? "587");
 
-            // 🔥 Sécurité : vérification avant envoi
             if (!string.IsNullOrEmpty(visit.Email_visitor) 
                 && !string.IsNullOrEmpty(smtpEmail) 
                 && !string.IsNullOrEmpty(smtpPassword))
             {
-                // SignalR temps réel
-                await _signalRService.SendStatusUpdateAsync(
-                    visit.Email_visitor, notificationMessage, "STATUS_UPDATE");
-
                 var email = new MimeMessage();
                 email.From.Add(MailboxAddress.Parse(smtpEmail));
                 email.To.Add(MailboxAddress.Parse(visit.Email_visitor));
-                email.Subject = $"Mise à jour de votre visite - {statusLabel.ToUpper()}";
+                email.Subject = $"🔔 Mise à jour de votre visite : {statusLabel.ToUpper()}";
                 email.Body = new TextPart(TextFormat.Html)
                 {
                     Text = $@"
-                        <div style='font-family: sans-serif; padding: 20px;'>
-                            <h3>Bonjour {visit.Nom_visitor},</h3>
-                            <p>Le statut de votre demande de visite a été mis à jour : <b>{statusLabel}</b>.</p>
+                        <div style='font-family: sans-serif; padding: 20px; color: #1E293B;'>
+                            <h2>Bonjour {visit.Nom_visitor ?? "Visiteur"},</h2>
+                            <p>Le statut de votre demande de visite a été mis à jour : <b style='color: #2563EB;'>{statusLabel.ToUpper()}</b>.</p>
+                            <hr style='border: 0; border-top: 1px solid #E2E8F0; margin: 15px 0;' />
                             <p><b>Motif :</b> {visit.Motif}</p>
+                            <p><b>Date :</b> {visit.Date:dd/MM/yyyy}</p>
+                            <p><b>Heure :</b> {visit.HeureArriver}</p>
                             <br/>
-                            <p>Merci d'utiliser notre service de gestion des visiteurs.</p>
+                            <p>Connectez-vous à votre espace personnel pour consulter votre Pass d'accès.</p>
                         </div>"
                 };
 
                 try
                 {
                     using var smtp = new SmtpClient();
-                    await smtp.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.StartTls);
-                    await smtp.AuthenticateAsync(smtpEmail, smtpPassword);
-                    await smtp.SendAsync(email);
-                    await smtp.DisconnectAsync(true);
-                    Console.WriteLine($"✅ Email envoyé à {visit.Email_visitor}");
+                    await smtp.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.StartTls, cancellationToken);
+                    await smtp.AuthenticateAsync(smtpEmail, smtpPassword, cancellationToken);
+                    await smtp.SendAsync(email, cancellationToken);
+                    await smtp.DisconnectAsync(true, cancellationToken);
+                    Console.WriteLine($"✅ Email de confirmation envoyé à {visit.Email_visitor}");
                 }
                 catch (Exception ex)
                 {
@@ -111,7 +128,7 @@ public class UpdateVisitStatusCommandHandler : IRequestHandler<UpdateVisitStatus
             }
             else
             {
-                Console.WriteLine($"[EMAIL] Ignoré — email visiteur: '{visit.Email_visitor}' | config smtp: '{smtpEmail}'");
+                Console.WriteLine($"[EMAIL IGNORED] Email visiteur: '{visit.Email_visitor}' | Smtp: '{smtpEmail}'");
             }
         }
 

@@ -1,11 +1,15 @@
 import * as signalR from "@microsoft/signalr";
 
-// L'URL doit correspondre à app.MapHub("/visitHub") dans ton Program.cs
-const HUB_URL = "http://localhost:5283/visitHub"; 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5283/api';
+// Extrait le domaine racine pour pointer vers le Hub (/visitHub)
+const HUB_URL = `${new URL(API_BASE).origin}/visitHub`;
 
 const connection = new signalR.HubConnectionBuilder()
-    .withUrl(HUB_URL)
-    .withAutomaticReconnect() // Reconnexion auto si le serveur redémarre
+    .withUrl(HUB_URL, {
+      // Optionnel : Transmission du token Clerk au Hub SignalR
+      accessTokenFactory: async () => await window.Clerk?.session?.getToken()
+    })
+    .withAutomaticReconnect()
     .build();
 
 export const startSignalRConnection = async () => {
@@ -15,7 +19,6 @@ export const startSignalRConnection = async () => {
             console.log("SignalR: Connecté au Hub !");
         } catch (err) {
             console.error("SignalR: Erreur de connexion", err);
-            // Réessayer après 5 secondes si ça échoue
             setTimeout(startSignalRConnection, 5000);
         }
     }

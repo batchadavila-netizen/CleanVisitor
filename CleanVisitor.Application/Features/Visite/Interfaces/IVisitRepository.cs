@@ -20,6 +20,6 @@ Task<VisitDto?>GetByDateAsync(DateTime Date);
     Task<List<VisitDto>> GetUserVisitsAsync(int userId);
     Task<List<VisitDto>> GetByServiceAsync(int serviceId);
     Task<IEnumerable<(Visit visit, Visitor visitor)>> GetTodayVisitsByAgentOrServiceAsync(int userId, string service);
-    Task<IEnumerable<Visit>> GetVisitsByHostAndDateAsync(int userId, DateTime date);
+    Task<IEnumerable<Visit>> GetVisitsByHostAndDateAsync(int? userId, DateTime date);
     }
     

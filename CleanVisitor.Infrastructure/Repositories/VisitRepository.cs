@@ -21,131 +21,130 @@ public class VisitRepository : IVisitRepository
     }
     
     // 🟢 1. ADDASYNC CORRIGÉ (Rejoint [User] pour alimenter l'hôte immédiatement à la création)
-    public async Task<VisitDto> AddAsync(Visit visit)
-    {
-        var sql = @"
-            INSERT INTO [Visit] (Motif, Date, HeureDepart, HeureArriver, Statut, Service, IdVisitor, IsDeleted, UserId, AccessCode) 
-            VALUES (@Motif, @Date, @HeureDepart, @HeureArriver, @Statut, @Service, @IdVisitor, 0, @UserId, @AccessCode);
-            
-            DECLARE @NewId INT = SCOPE_IDENTITY();
+   public async Task<VisitDto> AddAsync(Visit visit)
+{
+    var sql = @"
+        INSERT INTO [Visit] (Motif, Date, HeureDepart, HeureArriver, Statut, Service, IdVisitor, IsDeleted, UserId, AccessCode) 
+        VALUES (@Motif, @Date, @HeureDepart, @HeureArriver, @Statut, @Service, @IdVisitor, 0, @UserId, @AccessCode);
+        
+        DECLARE @NewId INT = SCOPE_IDENTITY();
 
-            SELECT 
-                v.Id AS Id,
-                v.Motif AS Motif, 
-                v.Date AS Date, 
-                v.HeureDepart AS HeureDepart, 
-                v.HeureArriver AS HeureArriver, 
-                v.Statut AS Statut, 
-                v.Service AS Service,
-                v.IdVisitor AS IdVisitor,
-                v.UserId AS UserId,             -- ID Hôte
-                v.AccessCode AS AccessCode,
-                vt.Nom AS Nom_visitor,   
-                vt.Email AS Email_visitor,
-                u.Nom AS Nom_Host,              -- Nom Hôte
-                u.Prenom AS Prenom_Host         -- Prénom Hôte
-            FROM [Visit] v
-            INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
-            LEFT JOIN [User] u ON v.UserId = u.Id -- Jointure avec l'Hôte
-            WHERE v.Id = @NewId;";
-            
-        using var connection = new SqlConnection(_connectionString);
-        return await connection.QuerySingleAsync<VisitDto>(sql, visit);
+        SELECT 
+            v.Id AS Id,
+            v.Motif AS Motif, 
+            v.Date AS Date, 
+            v.HeureDepart AS HeureDepart, 
+            v.HeureArriver AS HeureArriver, 
+            v.Statut AS Statut, 
+            v.Service AS Service,
+            v.IdVisitor AS IdVisitor,
+            v.UserId AS UserId,
+            v.AccessCode AS AccessCode,
+            vt.Nom AS Nom_visitor,   
+            vt.Email AS Email_visitor,
+            u.Nom AS Nom_Host,
+            u.Prenom AS Prenom_Host
+        FROM [Visit] v
+        LEFT JOIN [User] vt ON v.IdVisitor = vt.Id
+        LEFT JOIN [User] u ON v.UserId = u.Id
+        WHERE v.Id = @NewId;";
+        
+    using var connection = new SqlConnection(_connectionString);
+    
+    // 🟢 PASSAGE D'UN OBJET ANONYME SÉCURISÉ POUR DAPPER (Pas d'objets complexes)
+    var result = await connection.QueryFirstOrDefaultAsync<VisitDto>(sql, new 
+    {
+        Motif = visit.Motif,
+        Date = visit.Date,
+        HeureDepart = visit.HeureDepart,
+        HeureArriver = visit.HeureArriver,
+        Statut = (int)visit.Statut,
+        Service = (int)visit.Service,
+        IdVisitor = visit.IdVisitor,
+        UserId = visit.UserId,
+        AccessCode = visit.AccessCode
+    });
+
+    if (result == null)
+    {
+        throw new InvalidOperationException($"Échec de la récupération de la visite enregistrée.");
     }
 
+    return result;
+}
     public async Task<VisitDto?> UpdateAsync(Visit visit)
-    {
-        using var connection = new SqlConnection(_connectionString);
-        string sql = @"
-            UPDATE [Visit] 
-            SET Motif = @Motif, 
-                Date = @Date, 
-                HeureDepart = @HeureDepart, 
-                HeureArriver = @HeureArriver, 
-                Statut = @Statut, 
-                Service = @Service,
-                UserId = @UserId
-            WHERE Id = @Id;
+{
+    using var connection = new SqlConnection(_connectionString);
+    string sql = @"
+        UPDATE [Visit] 
+        SET Motif = @Motif, 
+            Date = @Date, 
+            HeureDepart = @HeureDepart, 
+            HeureArriver = @HeureArriver, 
+            Statut = @Statut, 
+            Service = @Service,
+            UserId = @UserId
+        WHERE Id = @Id;
 
-            SELECT 
-                v.Id AS Id,
-                v.Motif AS Motif, 
-                v.Date AS Date, 
-                v.HeureDepart AS HeureDepart, 
-                v.HeureArriver AS HeureArriver, 
-                v.Statut AS Statut, 
-                v.Service AS Service,
-                v.IdVisitor AS IdVisitor,
-                v.UserId AS UserId,
-                v.AccessCode AS AccessCode,
-                vt.Nom AS Nom_visitor,   
-                vt.Email AS Email_visitor,
-                u.Nom AS Nom_Host,
-                u.Prenom AS Prenom_Host
-            FROM [Visit] v
-            INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
-            LEFT JOIN [User] u ON v.UserId = u.Id
-            WHERE v.Id = @Id;";
-                       
-        return await connection.QueryFirstOrDefaultAsync<VisitDto>(sql, visit);
-    }
-
+        SELECT 
+            v.Id AS Id, v.Motif AS Motif, v.Date AS Date, v.HeureDepart AS HeureDepart, 
+            v.HeureArriver AS HeureArriver, v.Statut AS Statut, v.Service AS Service,
+            v.IdVisitor AS IdVisitor, v.UserId AS UserId, v.AccessCode AS AccessCode,
+            vt.Nom AS Nom_visitor, vt.Email AS Email_visitor,
+            u.Nom AS Nom_Host, u.Prenom AS Prenom_Host
+        FROM [Visit] v
+        LEFT JOIN [User] vt ON v.IdVisitor = vt.Id
+        LEFT JOIN [User] u ON v.UserId = u.Id
+        WHERE v.Id = @Id;";
+                   
+    return await connection.QueryFirstOrDefaultAsync<VisitDto>(sql, visit);
+}
     // 🟢 2. GETBYIDASYNC CORRIGÉ (C'est la méthode appelée quand on charge une visite à reprogrammer !)
     public async Task<VisitDto?> GetByIdAsync(int id)
-    {
-        string sql = @"
-            SELECT 
-                v.Id AS Id,
-                v.Motif AS Motif, 
-                v.Date AS Date, 
-                v.HeureDepart AS HeureDepart, 
-                v.HeureArriver AS HeureArriver, 
-                v.Statut AS Statut, 
-                v.Service AS Service,
-                v.IdVisitor AS IdVisitor,
-                v.UserId AS UserId,             -- ID Hôte
-                v.AccessCode AS AccessCode,
-                vt.Nom AS Nom_visitor, 
-                vt.Email AS Email_visitor,
-                u.Nom AS Nom_Host,              -- Nom Hôte
-                u.Prenom AS Prenom_Host         -- Prénom Hôte
-            FROM [Visit] v
-            INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
-            LEFT JOIN [User] u ON v.UserId = u.Id  -- Jointure Hôte
-            WHERE v.[Id] = @Id AND v.IsDeleted = 0";
+{
+    string sql = @"
+        SELECT 
+            v.Id AS Id, v.Motif AS Motif, v.Date AS Date, v.HeureDepart AS HeureDepart, 
+            v.HeureArriver AS HeureArriver, v.Statut AS Statut, v.Service AS Service,
+            v.IdVisitor AS IdVisitor, v.UserId AS UserId, v.AccessCode AS AccessCode,
+            vt.Nom AS Nom_visitor, vt.Email AS Email_visitor,
+            u.Nom AS Nom_Host, u.Prenom AS Prenom_Host
+        FROM [Visit] v
+        LEFT JOIN [User] vt ON v.IdVisitor = vt.Id
+        LEFT JOIN [User] u ON v.UserId = u.Id
+        WHERE v.[Id] = @Id AND v.IsDeleted = 0";
 
-        using var connection = new SqlConnection(_connectionString);
-        return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, new { Id = id });
-    }
-
+    using var connection = new SqlConnection(_connectionString);
+    return await connection.QueryFirstOrDefaultAsync<VisitDto?>(sql, new { Id = id });
+}
     public async Task<List<VisitDto?>> GetAllAsync()
-    {
-        var sql = @"
-            SELECT 
-                v.Id AS Id,
-                v.Motif AS Motif, 
-                v.Date AS Date, 
-                v.HeureDepart AS HeureDepart, 
-                v.HeureArriver AS HeureArriver, 
-                v.Statut AS Statut, 
-                v.Service AS Service,
-                v.IdVisitor AS IdVisitor,
-                v.UserId AS UserId,
-                v.AccessCode AS AccessCode,
-                vt.Nom AS Nom_visitor,   
-                vt.Email AS Email_visitor,
-                u.Nom AS Nom_Host,
-                u.Prenom AS Prenom_Host
-            FROM [Visit] v
-            INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
-            LEFT JOIN [User] u ON v.UserId = u.Id
-            WHERE v.IsDeleted = 0";
+{
+    var sql = @"
+        SELECT 
+            v.Id AS Id,
+            v.Motif AS Motif, 
+            v.Date AS Date, 
+            v.HeureDepart AS HeureDepart, 
+            v.HeureArriver AS HeureArriver, 
+            v.Statut AS Statut, 
+            v.Service AS Service,
+            v.IdVisitor AS IdVisitor,
+            v.UserId AS UserId,
+            v.AccessCode AS AccessCode,
+            vt.Nom AS Nom_visitor,   
+            vt.Email AS Email_visitor,
+            u.Nom AS Nom_Host,
+            u.Prenom AS Prenom_Host
+        FROM [Visit] v
+        LEFT JOIN [User] vt ON v.IdVisitor = vt.Id -- 🟢 Jointure corrigée sur [User]
+        LEFT JOIN [User] u ON v.UserId = u.Id      -- Jointure avec l'Hôte
+        WHERE v.IsDeleted = 0
+        ORDER BY v.Date DESC, v.HeureArriver DESC";
 
-        using var connection = new SqlConnection(_connectionString);
-        var visits = await connection.QueryAsync<VisitDto>(sql);
-        return visits.ToList()!;
-    }
-
+    using var connection = new SqlConnection(_connectionString);
+    var visits = await connection.QueryAsync<VisitDto>(sql);
+    return visits.ToList()!;
+}
     public async Task<bool> DeleteAsync(int id)
     {
         using var connection = new SqlConnection(_connectionString);
@@ -230,61 +229,46 @@ public class VisitRepository : IVisitRepository
 
     // 🟢 3. GETUSERVISITSASYNC CORRIGÉ (Côté Visiteur : renvoie les visites du visiteur avec l'hôte !)
     public async Task<List<VisitDto>> GetUserVisitsAsync(int userId)
-    {
-        const string sql = @"
-            SELECT 
-                v.Id, v.Motif, v.Date, v.HeureArriver, v.HeureDepart, v.Statut, v.Service,
-                v.IdVisitor, v.UserId, v.AccessCode,
-                uHost.Nom AS Nom_Host,
-                uHost.Prenom AS Prenom_Host
-            FROM [Visit] v
-            INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
-            INNER JOIN [User] u ON vt.Email = u.Email
-            LEFT JOIN [User] uHost ON v.UserId = uHost.Id -- Hôte ciblé par la visite
-            WHERE u.Id = @UserId AND v.IsDeleted = 0";
+{
+    // 🟢 CORRECTION : Jointure directe sur [User] pour récupérer la visite avec l'Hôte
+    const string sql = @"
+        SELECT 
+            v.Id, v.Motif, v.Date, v.HeureArriver, v.HeureDepart, v.Statut, v.Service,
+            v.IdVisitor, v.UserId, v.AccessCode,
+            vt.Nom AS Nom_visitor,
+            vt.Email AS Email_visitor,
+            uHost.Nom AS Nom_Host,
+            uHost.Prenom AS Prenom_Host
+        FROM [Visit] v
+        LEFT JOIN [User] vt ON v.IdVisitor = vt.Id       -- Visiteur
+        LEFT JOIN [User] uHost ON v.UserId = uHost.Id    -- Hôte
+        WHERE v.IdVisitor = @UserId AND v.IsDeleted = 0
+        ORDER BY v.Date DESC, v.HeureArriver DESC";
 
-        using var connection = new SqlConnection(_connectionString);
-        var result = await connection.QueryAsync<VisitDto>(sql, new { UserId = userId });
-        return result.ToList();
-    }
+    using var connection = new SqlConnection(_connectionString);
+    var result = await connection.QueryAsync<VisitDto>(sql, new { UserId = userId });
+    return result.ToList();
+}
 
     public async Task<List<VisitDto>> GetByServiceAsync(int serviceId)
-    {
-        const string sql = @"
-            SELECT 
-                v.Id, 
-                v.Motif, 
-                v.Date, 
-                v.HeureArriver, 
-                v.HeureDepart,
-                v.Statut, 
-                v.Service,
-                v.IdVisitor,
-                v.UserId,
-                vt.Nom AS Nom_visitor,
-                vt.Email AS Email_visitor,
-                u.Nom AS Nom_Host,
-                u.Prenom AS Prenom_Host
-            FROM [Visit] v
-            INNER JOIN [Visitors] vt ON v.IdVisitor = vt.Id
-            LEFT JOIN [User] u ON v.UserId = u.Id
-            WHERE (v.Service = @ServiceId OR v.Service = CAST(@ServiceId AS VARCHAR)) 
-              AND v.IsDeleted = 0
-              AND (v.Statut = 1 OR v.Statut = 'Accepter' OR v.Statut = 'Accepté')";
+{
+    const string sql = @"
+        SELECT 
+            v.Id, v.Motif, v.Date, v.HeureArriver, v.HeureDepart, v.Statut, 
+            v.Service, v.IdVisitor, v.UserId,
+            vt.Nom AS Nom_visitor, vt.Email AS Email_visitor,
+            u.Nom AS Nom_Host, u.Prenom AS Prenom_Host
+        FROM [Visit] v
+        LEFT JOIN [User] vt ON v.IdVisitor = vt.Id
+        LEFT JOIN [User] u ON v.UserId = u.Id
+        WHERE (v.Service = @ServiceId OR v.Service = CAST(@ServiceId AS VARCHAR)) 
+          AND v.IsDeleted = 0
+          AND (v.Statut = 1 OR v.Statut = 2)";
 
-        using var connection = new SqlConnection(_connectionString);
-        
-        try 
-        {
-            var visits = await connection.QueryAsync<VisitDto>(sql, new { ServiceId = serviceId });
-            return visits.ToList();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[SQL ERROR] GetByServiceAsync : {ex.Message}");
-            throw;
-        }
-    }
+    using var connection = new SqlConnection(_connectionString);
+    var visits = await connection.QueryAsync<VisitDto>(sql, new { ServiceId = serviceId });
+    return visits.ToList();
+}
     public async Task<IEnumerable<(Visit visit, Visitor visitor)>> GetTodayVisitsByAgentOrServiceAsync(int userId, string service)
 {
     // Normalisation de l'identifiant du service
@@ -336,16 +320,18 @@ public class VisitRepository : IVisitRepository
 
     return result;
 }
-public async Task<IEnumerable<Visit>> GetVisitsByHostAndDateAsync(int userId, DateTime date)
+public async Task<IEnumerable<Visit>> GetVisitsByHostAndDateAsync(int? userId, DateTime date)
 {
     const string sql = @"
-        SELECT Id, HeureArriver, Statut 
+        SELECT Id, IdVisitor, UserId, Service, Date, HeureArriver, Motif, Statut, AccessCode 
         FROM [Visit] 
-        WHERE UserId = @UserId
-          AND CAST(Date AS DATE) = CAST(@Date AS DATE)
-          AND Statut != 4"; // On ignore les visites annulées (4)
+        WHERE IsDeleted = 0 
+          AND (@UserId IS NULL OR UserId = @UserId)
+          AND CAST(Date AS DATE) = CAST(@Date AS DATE)";
 
     using var connection = new SqlConnection(_connectionString);
-    return await connection.QueryAsync<Visit>(sql, new { UserId = userId, Date = date });
+    var visits = await connection.QueryAsync<Visit>(sql, new { UserId = userId, Date = date.Date });
+    
+    return visits?.ToList() ?? new List<Visit>();
 }
 }

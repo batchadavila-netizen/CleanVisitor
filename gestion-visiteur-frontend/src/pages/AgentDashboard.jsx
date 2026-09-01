@@ -4,6 +4,7 @@ import { Search, Clock, CheckCircle2, Users, CheckCircle, Hourglass } from 'luci
 
 const AgentDashboard = () => {
   const [visits, setVisits] = useState([]);
+  const [usersMap, setUsersMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -11,7 +12,6 @@ const AgentDashboard = () => {
   const agentName = localStorage.getItem('userName') || localStorage.getItem('userNom') || 'Finance fifa';
   const rawService = localStorage.getItem('userService') || '3';
 
-  // Formatage du nom de service pour l'affichage
   const formatService = (service) => {
     if (service === '3' || service === 'Service Financier') return 'Service Financier';
     if (service === '2' || service === 'Service RH') return 'Service RH';
@@ -19,87 +19,106 @@ const AgentDashboard = () => {
     return service || 'Département';
   };
 
-  const fetchTodayVisits = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5283/api/Visit/agent-today', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
 
-      if (response.ok) {
-        const data = await response.json();
+      // 🟢 1. Chargement parallèle des Visites et de l'Annuaire Utilisateurs
+      const [visitsRes, usersRes] = await Promise.all([
+        fetch('http://localhost:5283/api/Visit/agent-today', { headers }).catch(() => null),
+        fetch('http://localhost:5283/api/User', { headers }).catch(() => null)
+      ]);
+
+      // 🟢 2. Création de la map ID -> Utilisateur
+      if (usersRes && usersRes.ok) {
+        const usersData = await usersRes.json();
+        const usersList = usersData?.$values || usersData || [];
+        const map = {};
+        usersList.forEach(u => {
+          const uId = String(u.id || u.Id);
+          map[uId] = u;
+        });
+        setUsersMap(map);
+      }
+
+      // 🟢 3. Enregistrement des visites
+      if (visitsRes && visitsRes.ok) {
+        const data = await visitsRes.json();
         const list = data?.$values || data || [];
         setVisits(list);
-      } else {
-        console.error("Erreur réponse serveur :", response.status);
       }
     } catch (err) {
-      console.error("Erreur chargement visites du jour :", err);
+      console.error("Erreur chargement données agent :", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTodayVisits();
+    fetchDashboardData();
 
-    // Écouteur temps réel via SignalR
     if (window.signalRConnection) {
       window.signalRConnection.on("ReceiveVisitStatusUpdate", () => {
-        fetchTodayVisits();
+        fetchDashboardData();
       });
     }
   }, []);
 
-  // 🟢 HELPER UNIFIÉ DE DÉTECTION DU STATUT (1: Attendu, 2: Dans locaux, 3: Terminé, 4: Annulé)
   const getStatutType = (v) => {
     const raw = v.statut !== undefined ? v.statut : (v.Statut !== undefined ? v.Statut : 1);
     const s = String(raw).toLowerCase().trim();
 
-    // STATUT 2 : DANS LES LOCAUX / VALIDÉ À L'ACCUEIL
-    if (s === '2' || s.includes('accepte') || s.includes('accepté') || s.includes('valide') || s.includes('validé')) {
-      return 2;
-    }
-    
-    // STATUT 3 : TERMINÉ
-    if (s === '3' || s.includes('termine') || s.includes('terminé') || s.includes('cloture')) {
-      return 3;
-    }
-
-    // STATUT 4 : ANNULÉ
-    if (s === '4' || s.includes('annule') || s.includes('annulé')) {
-      return 4;
-    }
-
-    // STATUT 1 : EN ATTENTE D'ARRIVÉE À LA LOGE (Par défaut pour aujourd'hui)
+    if (s === '2' || s.includes('accepte') || s.includes('accepté') || s.includes('valide') || s.includes('validé')) return 2;
+    if (s === '3' || s.includes('termine') || s.includes('terminé') || s.includes('cloture')) return 3;
+    if (s === '4' || s.includes('annule') || s.includes('annulé')) return 4;
     return 1;
   };
 
-  // Helper pour extraire le nom complet du visiteur
+  // 🟢 HELPER AVEC CORRESPONDANCE PAR ID
   const getVisitorFullName = (v) => {
-    const nom = v.nom_visitor || v.nomVisitor || v.Nom_Visitor || v.nom || v.visitor?.nom || v.Visitor?.nom || '';
-    const prenom = v.prenom_visitor || v.prenomVisitor || v.Prenom_Visitor || v.prenom || v.visitor?.prenom || v.Visitor?.prenom || '';
-    
-    const fullName = `${nom} ${prenom}`.trim();
-    return fullName !== '' ? fullName : 'Visiteur Inconnu';
+    // 1. Recherche directe dans la réponse visite
+    const nomDirect = v.nom_visitor || v.nomVisitor || v.Nom_Visitor || v.userNom || v.nom || v.Nom || '';
+    const prenomDirect = v.prenom_visitor || v.prenomVisitor || v.Prenom_Visitor || v.userPrenom || v.prenom || v.Prenom || '';
+    let fullName = `${nomDirect} ${prenomDirect}`.trim();
+
+    if (fullName) return fullName;
+
+    // 2. Recherche par navigation property
+    const subUser = v.visitor || v.Visitor || v.user || v.User || v.idVisitorNavigation || v.IdVisitorNavigation;
+    if (subUser) {
+      const subNom = subUser.nom || subUser.Nom || '';
+      const subPrenom = subUser.prenom || subUser.Prenom || '';
+      fullName = `${subNom} ${subPrenom}`.trim();
+      if (fullName) return fullName;
+    }
+
+    // 3. Fallback : Résolution par ID avec la map des utilisateurs
+    const visitorId = String(v.idVisitor || v.IdVisitor || v.visitorId || v.VisitorId || '');
+    if (visitorId && usersMap[visitorId]) {
+      const matchedUser = usersMap[visitorId];
+      const mNom = matchedUser.nom || matchedUser.Nom || '';
+      const mPrenom = matchedUser.prenom || matchedUser.Prenom || '';
+      fullName = `${mNom} ${mPrenom}`.trim();
+      if (fullName) return fullName;
+    }
+
+    return visitorId ? `Visiteur N° ${visitorId}` : 'Visiteur Inconnu';
   };
 
-  // 🟢 CALCUL FILTRÉ PAR DATE DU JOUR (todayStr)
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const todayVisits = useMemo(() => {
     return visits.filter(v => {
       const vDate = (v.date || v.Date || "").split('T')[0];
-      // Si la date n'est pas précisée par l'endpoint (déjà filtré côté SQL), on l'inclus par défaut
       return !vDate || vDate === todayStr;
     });
   }, [visits, todayStr]);
 
-  // Calcul dynamique des statistiques
   const totalAttendu = todayVisits.length;
   const visitesValidees = todayVisits.filter(v => getStatutType(v) === 2).length;
   const enAttente = todayVisits.filter(v => getStatutType(v) === 1).length;
@@ -116,7 +135,6 @@ const AgentDashboard = () => {
 
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'pl-64' : 'pl-20'}`}>
         
-        {/* BANNIÈRE EN-TÊTE */}
         <div className="bg-slate-900 px-8 pt-8 pb-16 relative overflow-hidden">
           <div className="relative z-10 max-w-6xl mx-auto">
             <span className="bg-blue-500/20 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/30 inline-block mb-3">
@@ -133,7 +151,6 @@ const AgentDashboard = () => {
 
         <div className="px-8 -mt-8 relative z-20 pb-12 max-w-6xl mx-auto space-y-6">
           
-          {/* STATISTIQUES DES VISITES DU JOUR */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
               <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
@@ -166,7 +183,6 @@ const AgentDashboard = () => {
             </div>
           </div>
 
-          {/* TABLEAU DES RENDEZ-VOUS DU JOUR */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">

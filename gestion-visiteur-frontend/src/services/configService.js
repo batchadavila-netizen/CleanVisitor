@@ -1,18 +1,15 @@
-// src/services/configService.js
-const API_BASE_URL = 'http://localhost:5283/api/SystemConfig';
+import { fetchWithAuth } from './apiClient';
 
 export const configService = {
-  // 1. Récupération des données depuis SQL Server via l'API C#
+  // 1. Récupération des données
   getConfig: async () => {
     try {
-      const response = await fetch(API_BASE_URL);
-      if (!response.ok) throw new Error("Erreur de réponse du serveur");
-      
-      const data = await response.json();
+      // 🟢 Chemin corrigé : /api/SystemConfig
+      const data = await fetchWithAuth('/api/SystemConfig');
 
       // Synchronisation synchrone du cache local
-      localStorage.setItem('companyName', data.companyName);
-      localStorage.setItem('companyServices', JSON.stringify(data.companyServices));
+      if (data?.companyName) localStorage.setItem('companyName', data.companyName);
+      if (data?.companyServices) localStorage.setItem('companyServices', JSON.stringify(data.companyServices));
       
       return data;
     } catch (error) {
@@ -29,27 +26,19 @@ export const configService = {
     }
   },
 
-  // 2. Enregistrement direct en Base de Données SQL Server
+  // 2. Enregistrement en Base de Données
   saveConfig: async (newConfig) => {
     try {
-      const response = await fetch(API_BASE_URL, {
+      // 🟢 Chemin corrigé : /api/SystemConfig
+      const updatedData = await fetchWithAuth('/api/SystemConfig', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify(newConfig)
       });
 
-      if (!response.ok) throw new Error("Erreur de sauvegarde backend");
-
-      const updatedData = await response.json();
-
-      // Mise à jour immédiate du cache local et émission de l'événement
-      localStorage.setItem('companyName', updatedData.companyName);
-      localStorage.setItem('companyServices', JSON.stringify(updatedData.companyServices));
+      // Mise à jour du cache local et émission de l'événement
+      if (updatedData?.companyName) localStorage.setItem('companyName', updatedData.companyName);
+      if (updatedData?.companyServices) localStorage.setItem('companyServices', JSON.stringify(updatedData.companyServices));
       
-      // Notifie la Sidebar et l'ensemble de l'application
       window.dispatchEvent(new Event('configUpdated'));
 
       return updatedData;
