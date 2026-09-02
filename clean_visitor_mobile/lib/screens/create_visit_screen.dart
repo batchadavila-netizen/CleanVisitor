@@ -54,7 +54,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
       final data = widget.initialData!;
       _motifController.text = data['motif'] ?? data['Motif'] ?? '';
       _selectedService = _resolveServiceId(data['service'] ?? data['Service']);
-      // Date et heure vides pour forcer l'utilisateur à choisir
       _selectedDate = null;
       _selectedTime = null;
     } else {
@@ -66,14 +65,14 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
   Future<void> _loadVisitorInfo() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      // CORRECTION — récupération robuste du visitorId
-      final visitorIdStr = prefs.getString('visitorId') ?? '';
-      final visitorIdInt = prefs.getInt('visitorId');
-      _visitorId = visitorIdInt ?? int.tryParse(visitorIdStr);
-      _visitorName = prefs.getString('userName') ?? 'Visiteur';
+      // Lecture unifiée : vérification de 'userId' puis 'visitorId'
+      final idStr = prefs.getString('userId') ?? prefs.getString('visitorId') ?? '';
+      final idInt = prefs.getInt('userId') ?? prefs.getInt('visitorId');
+      
+      _visitorId = idInt ?? int.tryParse(idStr);
+      _visitorName = prefs.getString('userNom') ?? prefs.getString('userName') ?? 'Visiteur';
     });
 
-    // Debug pour voir ce qui est stocké
     debugPrint('🔍 visitorId récupéré: $_visitorId');
     debugPrint('🔍 userName: $_visitorName');
   }
@@ -129,11 +128,11 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
       return;
     }
 
-    // CORRECTION — si visitorId est toujours null, on recharge depuis SharedPreferences
+    // Deuxième vérification de sécurité sur le Stockage local
     if (_visitorId == null) {
       final prefs = await SharedPreferences.getInstance();
-      final visitorIdStr = prefs.getString('visitorId') ?? '';
-      _visitorId = int.tryParse(visitorIdStr);
+      final idStr = prefs.getString('userId') ?? prefs.getString('visitorId') ?? '';
+      _visitorId = prefs.getInt('userId') ?? int.tryParse(idStr);
       debugPrint('🔁 Retry visitorId: $_visitorId');
     }
 
@@ -233,8 +232,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // BANDEAU INFO reprogrammation
               if (_isReprogramMode) ...[
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -277,7 +274,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
-
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -294,8 +290,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
-                    // NOM VISITEUR
                     _buildLabel("Visiteur"),
                     const SizedBox(height: 8),
                     Container(
@@ -333,8 +327,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // SERVICE — bloqué en reprogrammation, modifiable sinon
                     _buildLabel("Service à visiter"),
                     const SizedBox(height: 8),
                     _isReprogramMode
@@ -381,8 +373,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
                             ),
                           ),
                     const SizedBox(height: 20),
-
-                    // DATE
                     _buildLabel(_isReprogramMode ? "Nouvelle Date *" : "Date *"),
                     const SizedBox(height: 8),
                     GestureDetector(
@@ -433,8 +423,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // HEURE
                     _buildLabel(_isReprogramMode
                         ? "Nouvelle Heure *"
                         : "Heure d'arrivée *"),
@@ -486,8 +474,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // MOTIF — bloqué en reprogrammation
                     _buildLabel("Motif de la visite"),
                     const SizedBox(height: 8),
                     _isReprogramMode
@@ -529,8 +515,6 @@ class _CreateVisitScreenState extends State<CreateVisitScreen> {
                             ),
                           ),
                     const SizedBox(height: 24),
-
-                    // BOUTON
                     SizedBox(
                       width: double.infinity,
                       height: 54,

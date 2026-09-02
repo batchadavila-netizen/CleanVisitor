@@ -37,14 +37,31 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 
 // --- 2. CONFIGURATION CORS (UNIFIÉE REACT & SIGNALR) ---
+// builder.Services.AddCors(options =>
+// {
+//     options.AddPolicy("GlobalCorsPolicy", policy =>
+//     {
+//         policy.WithOrigins("http://localhost:5173") // Origine React frontend
+//               .AllowAnyHeader()
+//               .AllowAnyMethod()
+//               .AllowCredentials(); // Requis pour les sessions/handshakes SignalR
+//     });
+// });
+// --- 1. CONFIGURATION DU SERVEUR KESTREL ---
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5283); // Écoute sur 0.0.0.0:5283
+});
+
+// --- 2. CONFIGURATION CORS ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("GlobalCorsPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // Origine React frontend
+        policy.SetIsOriginAllowed(origin => true) // Autorise le téléphone et React
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Requis pour les sessions/handshakes SignalR
+              .AllowCredentials();
     });
 });
 
