@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CleanVisitor.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+857ab568d8251f36b4e5d56c8ed199d7c0bdb847")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8153bdd97686ebc6d5bafe21e04d95169773c8a6")]
 [assembly: System.Reflection.AssemblyProductAttribute("CleanVisitor.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CleanVisitor.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
