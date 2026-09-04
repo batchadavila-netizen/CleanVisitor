@@ -171,11 +171,12 @@ var app = builder.Build();
 
 // --- 6. PIPELINE MIDDLEWARE ---
 
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "CleanVisitor API V1");
+    c.RoutePrefix = string.Empty; // Permet d'ouvrir Swagger directement sur la racine https://cleanvisitor.onrender.com/
+});
 
 // 1. Activation globale du CORS
 app.UseCors("GlobalCorsPolicy");
