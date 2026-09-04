@@ -12,4 +12,6 @@ public record CreateVisitCommand : IRequest<VisitDto>
     public VisitStatut Statut{get;set;}
     public ServiceVisitor Service{get;set;}
     public int IdVisitor {get;set;}
+    public int UserId {get; set;}
+    public string? AccessCode { get; set; }
 }

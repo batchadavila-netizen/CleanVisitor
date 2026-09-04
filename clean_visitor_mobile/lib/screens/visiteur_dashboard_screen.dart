@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/visit_model.dart';
 import '../services/visit_service.dart';
+import '../services/notification_service.dart';
+import '../widgets/app_drawer.dart';
 
 class VisiteurDashboardScreen extends StatefulWidget {
   const VisiteurDashboardScreen({Key? key}) : super(key: key);
@@ -16,6 +18,7 @@ class _VisiteurDashboardScreenState extends State<VisiteurDashboardScreen> {
   String userEmail = '';
 
   List<VisitModel> visits = [];
+  int notificationCount = 0;
   bool isLoading = true;
 
   @override
@@ -33,6 +36,7 @@ class _VisiteurDashboardScreenState extends State<VisiteurDashboardScreen> {
     });
 
     await fetchVisits();
+    await _loadNotificationsCount();
   }
 
   Future<void> fetchVisits() async {
@@ -53,6 +57,18 @@ class _VisiteurDashboardScreenState extends State<VisiteurDashboardScreen> {
     }
   }
 
+  Future<void> _loadNotificationsCount() async {
+    try {
+      if (visitorId.isNotEmpty) {
+        final notifService = NotificationService();
+        final notifs = await notifService.getByVisitor(visitorId);
+        setState(() {
+          notificationCount = notifs.length;
+        });
+      }
+    } catch (_) {}
+  }
+
   int get pendingCount {
     return visits.where((v) => v.statusLabel.contains('attente')).length;
   }
@@ -61,22 +77,62 @@ class _VisiteurDashboardScreenState extends State<VisiteurDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      drawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Color(0xFF1E293B)),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: const Text(
           "Mon Espace",
           style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w900, fontSize: 24),
         ),
         actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: Color(0xFF64748B)),
+                onPressed: () {
+                  // Action ou navigation vers les notifications si nécessaire
+                },
+              ),
+              if (notificationCount > 0)
+                Positioned(
+                  right: 10,
+                  top: 10,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$notificationCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
-            onPressed: fetchVisits,
+            onPressed: () {
+              fetchVisits();
+              _loadNotificationsCount();
+            },
           )
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: fetchVisits,
+        onRefresh: () async {
+          await fetchVisits();
+          await _loadNotificationsCount();
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20.0),
@@ -100,9 +156,17 @@ class _VisiteurDashboardScreenState extends State<VisiteurDashboardScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final result = await Navigator.pushNamed(context, '/create-visit');
+                    if (result == true && context.mounted) {
+                      fetchVisits();
+                    }
+                  },
                   icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text("Nouvelle Visite", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  label: const Text(
+                    "Nouvelle Visite", 
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -194,28 +258,28 @@ class _VisiteurDashboardScreenState extends State<VisiteurDashboardScreen> {
                                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                                     ),
                                     trailing: Row(
-  mainAxisSize: MainAxisSize.min, // <-- Correction ici
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: v.statusBgColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        v.statusLabel,
-        style: TextStyle(
-          color: v.statusTextColor,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ),
-    const SizedBox(width: 4),
-    const Icon(Icons.chevron_right, color: Colors.grey),
-  ],
-),
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: v.statusBgColor,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            v.statusLabel,
+                                            style: TextStyle(
+                                              color: v.statusTextColor,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.chevron_right, color: Colors.grey),
+                                      ],
+                                    ),
                                     onTap: () {},
                                   );
                                 },

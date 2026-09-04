@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "8p9VYlEw9R4=",
+  "dgSpecHash": "6BcHV7eoIS8=",
   "success": true,
   "projectFilePath": "/home/tentchou/CleanVisitor/CleanVisitor.API/CleanVisitor.API.csproj",
   "expectedPackageFiles": [
@@ -56,6 +56,7 @@
     "/home/tentchou/.nuget/packages/microsoft.sqlserver.server/1.0.0/microsoft.sqlserver.server.1.0.0.nupkg.sha512",
     "/home/tentchou/.nuget/packages/mimekit/4.16.0/mimekit.4.16.0.nupkg.sha512",
     "/home/tentchou/.nuget/packages/newtonsoft.json/11.0.2/newtonsoft.json.11.0.2.nupkg.sha512",
+    "/home/tentchou/.nuget/packages/npgsql/10.0.3/npgsql.10.0.3.nupkg.sha512",
     "/home/tentchou/.nuget/packages/scalar.aspnetcore/2.0.14/scalar.aspnetcore.2.0.14.nupkg.sha512",
     "/home/tentchou/.nuget/packages/swashbuckle.aspnetcore/7.2.0/swashbuckle.aspnetcore.7.2.0.nupkg.sha512",
     "/home/tentchou/.nuget/packages/swashbuckle.aspnetcore.swagger/7.2.0/swashbuckle.aspnetcore.swagger.7.2.0.nupkg.sha512",
@@ -85,7 +86,7 @@
     {
       "code": "NU1903",
       "level": "Warning",
-      "message": "Le package 'AutoMapper' 12.0.1 présente une vulnérabilité de gravité élevé(e) connue, https://github.com/advisories/GHSA-rvv3-g6hj-g44x.",
+      "message": "Package 'AutoMapper' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x",
       "projectPath": "/home/tentchou/CleanVisitor/CleanVisitor.API/CleanVisitor.API.csproj",
       "warningLevel": 1,
       "filePath": "/home/tentchou/CleanVisitor/CleanVisitor.API/CleanVisitor.API.csproj",

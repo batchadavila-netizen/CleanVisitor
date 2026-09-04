@@ -16,4 +16,5 @@ public interface IUserRepository
     Task SaveResetTokenAsync(int userId, string token, DateTime expiry);
 Task<UserDto?> GetByResetTokenAsync(string email, string token);
 Task UpdatePasswordAsync(int userId, string newPasswordHash);
+Task<List<UserDto>> GetAgentsByServiceAsync(string service);
 }

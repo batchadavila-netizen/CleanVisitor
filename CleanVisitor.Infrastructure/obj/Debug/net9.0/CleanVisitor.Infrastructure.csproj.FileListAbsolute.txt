@@ -16,21 +16,3 @@ C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Infrastructure/obj/
 C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/refint/CleanVisitor.Infrastructure.dll
 C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.pdb
 C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/ref/CleanVisitor.Infrastructure.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/bin/Debug/net9.0/CleanVisitor.Infrastructure.deps.json
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/bin/Debug/net9.0/CleanVisitor.Infrastructure.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/bin/Debug/net9.0/CleanVisitor.Infrastructure.pdb
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/bin/Debug/net9.0/CleanVisitor.Application.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/bin/Debug/net9.0/CleanVisitor.Core.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/bin/Debug/net9.0/CleanVisitor.Application.pdb
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/bin/Debug/net9.0/CleanVisitor.Core.pdb
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.csproj.AssemblyReference.cache
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.AssemblyInfoInputs.cache
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.AssemblyInfo.cs
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.csproj.CoreCompileInputs.cache
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.sourcelink.json
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVis.886DC1AD.Up2Date
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/refint/CleanVisitor.Infrastructure.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/CleanVisitor.Infrastructure.pdb
-/home/tentchou/CleanVisitor/CleanVisitor.Infrastructure/obj/Debug/net9.0/ref/CleanVisitor.Infrastructure.dll

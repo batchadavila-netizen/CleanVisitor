@@ -1,67 +1,91 @@
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using Dapper;
+using System.Data;
+using CleanVisitor.Infrastructure.Data;
 using CleanVisitor.Application.Features.Notifications.Interfaces;
 using CleanVisitor.Application.Features.Notifications.Interfaces.IRealTimeNotificationService;
 using CleanVisitor.Core.Entities.Notification;
-using System.Data;
+
+namespace CleanVisitor.Infrastructure.Repositories;
 
 public class NotificationRepository : INotificationService
 {
-    private readonly string _connectionString;
+    private readonly DbContext _dbContext;
     private readonly IRealTimeNotificationService _signalRService;
 
-    // On retire IEmailService car l'envoi se fait maintenant dans les Handlers
-    public NotificationRepository(IConfiguration configuration, IRealTimeNotificationService signalRService)
+    public NotificationRepository(DbContext dbContext, IRealTimeNotificationService signalRService)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+        _dbContext = dbContext;
         _signalRService = signalRService;
-        
     }
 
-    // Version simplifiée avec Dapper (puisque tu l'as déjà importé)
     public async Task AddAsync(Notification notification)
-{
-    using var connection = new SqlConnection(_connectionString);
-    
-    // Ajout de ReceiverRole dans les colonnes et les valeurs
-    var sql = @"INSERT INTO Notifications (Message, DateEnvoi, IsRead, IdVisitor, Type, ReceiverRole) 
-                VALUES (@Message, @DateEnvoi, @IsRead, @IdVisitor, @Type, @ReceiverRole)";
-    
-    // Dapper va maintenant envoyer la valeur de notification.ReceiverRole
-    await connection.ExecuteAsync(sql, notification);
-}
-    // Cette méthode peut servir à l'Admin pour voir TOUT l'historique
+    {
+        using IDbConnection connection = _dbContext.CreateConnection();
+        
+        const string sqlSqlServer = @"
+            INSERT INTO [Notifications] ([Message], [DateEnvoi], [IsRead], [IdVisitor], [Type], [ReceiverRole]) 
+            VALUES (@Message, @DateEnvoi, @IsRead, @IdVisitor, @Type, @ReceiverRole)";
+
+        const string sqlPostgres = @"
+            INSERT INTO ""Notifications"" (""Message"", ""DateEnvoi"", ""IsRead"", ""IdVisitor"", ""Type"", ""ReceiverRole"") 
+            VALUES (@Message, @DateEnvoi, @IsRead, @IdVisitor, @Type, @ReceiverRole)";
+        
+        string sql = _dbContext.SelectQuery(sqlSqlServer, sqlPostgres);
+        await connection.ExecuteAsync(sql, notification);
+    }
+
     public async Task<IEnumerable<Notification>> GetAllAsync()
     {
-        using var connection = new SqlConnection(_connectionString);
-        const string sql = "SELECT * FROM Notifications ORDER BY DateEnvoi DESC";
+        using IDbConnection connection = _dbContext.CreateConnection();
+        
+        const string sqlSqlServer = @"SELECT * FROM [Notifications] ORDER BY [DateEnvoi] DESC";
+        const string sqlPostgres = @"SELECT * FROM ""Notifications"" ORDER BY ""DateEnvoi"" DESC";
+
+        string sql = _dbContext.SelectQuery(sqlSqlServer, sqlPostgres);
         return await connection.QueryAsync<Notification>(sql);
     }
+
     public async Task<IEnumerable<Notification>> GetAdminNotificationsAsync()
     {
-         using var connection = new SqlConnection(_connectionString);
-        // Requête SQL directe avec Dapper
-        string sql = "SELECT * FROM Notifications WHERE ReceiverRole = 'Admin'";
+        using IDbConnection connection = _dbContext.CreateConnection();
+        
+        const string sqlSqlServer = @"
+            SELECT * FROM [Notifications] 
+            WHERE [ReceiverRole] = 'Admin' 
+               OR [Type] IN ('NEW_VISIT', 'VISIT_UPDATE')
+            ORDER BY [DateEnvoi] DESC";
+
+        const string sqlPostgres = @"
+            SELECT * FROM ""Notifications"" 
+            WHERE ""ReceiverRole"" = 'Admin' 
+               OR ""Type"" IN ('NEW_VISIT', 'VISIT_UPDATE')
+            ORDER BY ""DateEnvoi"" DESC";
+
+        string sql = _dbContext.SelectQuery(sqlSqlServer, sqlPostgres);
         return await connection.QueryAsync<Notification>(sql);
     }
 
-   // CleanVisitor.Infrastructure/Repositories/NotificationRepository.cs
-
-public async Task<IEnumerable<Notification>> GetByVisitorIdAsync(int userId)
-{
-    // On joint la table Users pour faire le pont entre l'ID 40 et l'ID 1012
-    string sql = @"
-        SELECT n.* 
-        FROM Notifications n
-        INNER JOIN [User] u ON n.IdVisitor = u.VisitorId
-        WHERE u.Id = @UserId
-        ORDER BY n.DateEnvoi DESC";
-
-    using var connection = new SqlConnection(_connectionString);
+    public async Task<IEnumerable<Notification>> GetByVisitorIdAsync(int visitorOrUserId)
     {
-        // On passe l'Id de l'utilisateur (40) et Dapper fera le reste
-        return await connection.QueryAsync<Notification>(sql, new { UserId = userId });
+        using IDbConnection connection = _dbContext.CreateConnection();
+        
+        const string sqlSqlServer = @"
+            SELECT DISTINCT n.* 
+            FROM Notifications n
+            LEFT JOIN [User] u ON u.Id = @Id OR u.VisitorId = @Id
+            WHERE (n.IdVisitor = @Id OR n.IdVisitor = u.Id OR n.IdVisitor = u.VisitorId)
+              AND (n.ReceiverRole = 'Visiteur' OR n.ReceiverRole IS NULL)
+            ORDER BY n.DateEnvoi DESC";
+
+        const string sqlPostgres = @"
+            SELECT DISTINCT n.* 
+            FROM ""Notifications"" n
+            LEFT JOIN ""User"" u ON u.""Id"" = @Id OR u.""VisitorId"" = @Id
+            WHERE (n.""IdVisitor"" = @Id OR n.""IdVisitor"" = u.""Id"" OR n.""IdVisitor"" = u.""VisitorId"")
+              AND (n.""ReceiverRole"" = 'Visiteur' OR n.""ReceiverRole"" IS NULL)
+            ORDER BY n.""DateEnvoi"" DESC";
+
+        string sql = _dbContext.SelectQuery(sqlSqlServer, sqlPostgres);
+        return await connection.QueryAsync<Notification>(sql, new { Id = visitorOrUserId });
     }
-}
 }

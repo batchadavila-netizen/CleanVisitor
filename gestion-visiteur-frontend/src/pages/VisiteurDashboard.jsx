@@ -1,23 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { visitService } from '../services/visitService';
+import { authService } from '../services/authService';
 import { useNotification } from '../services/useNotification';
 import Sidebar from '../components/Sidebar';
 import CreateVisitModal from '../components/CreateVisitModal';
 import DetailVisitModal from '../components/DetailVisitModal';
+import DigitalBadge from '../components/DigitalBadge';
 import connection, { startSignalRConnection } from '../services/signalRService';
 import toast, { Toaster } from 'react-hot-toast';
-import { History, Clock, Calendar, ChevronRight, Plus, RefreshCw, Bell } from 'lucide-react';
+import { 
+  History, Clock, Calendar, ChevronRight, Plus, RefreshCw, Bell, 
+  Sparkles, ChevronDown, ChevronUp, CheckCircle2, QrCode 
+} from 'lucide-react';
 
 const VisiteurDashboard = () => {
   const navigate = useNavigate();
-  
-  const visitorId = localStorage.getItem('visitorId');
-  const userNom = localStorage.getItem('userNom') || localStorage.getItem('userName') || 'Visiteur';
-  const userEmail = localStorage.getItem('userEmail');
-  const userId = localStorage.getItem('userId');       // Pour les visites
+  const { user, isLoaded } = useUser();
 
-  const { notifications, loading: loadingNotifs, refresh: refreshNotifs } = useNotification(Number(visitorId), 'Visiteur');
+  const userNom = user?.fullName || localStorage.getItem('userNom') || localStorage.getItem('userName') || 'Visiteur';
+  const userEmail = user?.primaryEmailAddress?.emailAddress || localStorage.getItem('userEmail');
+
+  const getActiveVisitorId = useCallback(() => {
+    const vId = localStorage.getItem('visitorId');
+    const uId = localStorage.getItem('userId');
+    const uJson = localStorage.getItem('user');
+
+    if (vId && vId !== 'undefined' && vId !== 'null') return parseInt(vId, 10);
+    if (uId && uId !== 'undefined' && uId !== 'null') return parseInt(uId, 10);
+    
+    if (uJson) {
+      try {
+        const parsed = JSON.parse(uJson);
+        const candidate = parsed.id || parsed.Id || parsed.visitorId || parsed.VisitorId;
+        if (candidate) return parseInt(candidate, 10);
+      } catch (e) { console.error(e); }
+    }
+    return null;
+  }, []);
+
+  const visitorIdNum = getActiveVisitorId();
+  const { notifications, loading: loadingNotifs, refresh: refreshNotifs } = useNotification(visitorIdNum, 'Visiteur');
 
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +49,42 @@ const VisiteurDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState(null);
+  const [selectedBadgeVisit, setSelectedBadgeVisit] = useState(null);
+
+  const [showAllVisits, setShowAllVisits] = useState(false);
+  const [showAllNotifs, setShowAllNotifs] = useState(false);
+
+  useEffect(() => {
+    const syncUserWithBackend = async () => {
+      if (!isLoaded || !user) return;
+
+      try {
+        const payload = {
+          email: user.primaryEmailAddress?.emailAddress,
+          nom: user.lastName || user.firstName || 'Visiteur',
+          prenom: user.firstName || 'Google',
+          telephone: user.primaryPhoneNumber?.phoneNumber || '+237600000000',
+          role: 3
+        };
+
+        const response = await authService.syncClerkUser(payload);
+
+        if (response) {
+          const resId = response.userId || response.user?.id || response.id;
+          if (response.token) localStorage.setItem('token', response.token);
+          if (resId) {
+            localStorage.setItem('userId', resId);
+            localStorage.setItem('visitorId', resId);
+          }
+          localStorage.setItem('userRole', 'Visiteur');
+        }
+      } catch (error) {
+        console.error('Erreur de synchronisation backend :', error);
+      }
+    };
+
+    syncUserWithBackend();
+  }, [user, isLoaded]);
 
   const enumToCode = { "En_attente": 1, "Accepter": 2, "Terminee": 3, "Annulé": 4 };
 
@@ -42,28 +102,31 @@ const VisiteurDashboard = () => {
     return code;
   };
 
-  const getStatusLabel = (code) => {
-    const mapping = { 1: "⏳ En attente", 2: "✅ Acceptée", 3: "🏁 Terminée", 4: "❌ Annulée" };
-    return mapping[code] || `❓ ${code}`;
+  const renderStatusBadge = (code) => {
+    const configs = {
+      1: { label: "En attente", style: "bg-amber-50 text-amber-600 border-amber-200", dot: "bg-amber-500" },
+      2: { label: "Acceptée", style: "bg-emerald-50 text-emerald-600 border-emerald-200", dot: "bg-emerald-500" },
+      3: { label: "Terminée", style: "bg-blue-50 text-blue-600 border-blue-200", dot: "bg-blue-500" },
+      4: { label: "Annulée", style: "bg-red-50 text-red-600 border-red-200", dot: "bg-red-500" }
+    };
+    const badge = configs[code] || { label: `Inconnu`, style: "bg-slate-50 text-slate-600 border-slate-200", dot: "bg-slate-500" };
+    
+    return (
+      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${badge.style} whitespace-nowrap`}>
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${code === 1 ? 'animate-pulse' : ''} ${badge.dot}`}></span>
+        <span className="text-[10px] font-bold uppercase tracking-wider">{badge.label}</span>
+      </div>
+    );
   };
 
-  const getStatusColor = (label) => {
-    if (label.includes("attente")) return "bg-amber-100 text-amber-600 border-amber-200";
-    if (label.includes("Accept"))  return "bg-emerald-100 text-emerald-600 border-emerald-200";
-    if (label.includes("Termin"))  return "bg-blue-100 text-blue-600 border-blue-200";
-    if (label.includes("Annul"))   return "bg-red-100 text-red-600 border-red-200";
-    return "bg-slate-100 text-slate-400 border-slate-200";
-  };
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const userId = localStorage.getItem('userId');
-     const response = await visitService.getVisitorVisit(userId);
-      console.log('🔍 response API:', response);
-      
-      const laListe = response.listVisitClon?.$values || response.$values || (Array.isArray(response) ? response : []);
-      console.log('🔍 laListe:', laListe);
+      const activeUserId = getActiveVisitorId();
+      if (!activeUserId) return;
+
+      const response = await visitService.getVisitorVisit(activeUserId);
+      const laListe = response?.listVisitClon?.$values || response?.$values || (Array.isArray(response) ? response : []);
       
       const sorted = [...laListe].sort((a, b) => {
         const dateA = new Date(a.date || a.Date || 0);
@@ -72,39 +135,54 @@ const VisiteurDashboard = () => {
       });
       setVisits(sorted);
     } catch (error) {
-      console.error("Erreur chargement visites:", error);
-      toast.error("Erreur de récupération des visites");
+      console.error("Erreur de récupération des visites:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getActiveVisitorId]);
 
   useEffect(() => {
     loadData();
     startSignalRConnection();
     const handleReceiveUpdate = (data) => {
-      if (data.email === userEmail || Number(data.visitorId) === Number(visitorId)) {
-        toast.success(data.message || data.Message, { icon: '🔔', duration: 5000 });
+      if (data.email === userEmail || Number(data.visitorId) === Number(visitorIdNum)) {
+        toast.success(data.message || data.Message, { icon: <Bell size={18} className="text-blue-600" />, duration: 5000 });
         loadData();
         if (refreshNotifs) refreshNotifs();
       }
     };
     connection.on("ReceiveStatusUpdate", handleReceiveUpdate);
-    return () => connection.off("ReceiveStatusUpdate", handleReceiveUpdate);
-  }, [visitorId, userEmail, refreshNotifs]);
+    connection.on("ReceiveNewVisit", () => loadData());
+    return () => {
+      connection.off("ReceiveStatusUpdate", handleReceiveUpdate);
+      connection.off("ReceiveNewVisit");
+    };
+  }, [visitorIdNum, userEmail, refreshNotifs, loadData]);
 
-  const pendingCount = visits.filter(v => getStatusLabel(getEffectiveStatus(v)).includes('attente')).length;
-  const recentVisits = visits.slice(0, 10);
-  
+  const sortedNotifications = useMemo(() => {
+    if (!notifications || !Array.isArray(notifications)) return [];
+    return [...notifications].sort((a, b) => {
+      const dateA = new Date(a.dateEnvoi || a.DateEnvoi || 0);
+      const dateB = new Date(b.dateEnvoi || b.DateEnvoi || 0);
+      return dateB - dateA;
+    });
+  }, [notifications]);
+
+  const pendingCount = visits.filter(v => getEffectiveStatus(v) === 1).length;
+  const displayedVisits = showAllVisits ? visits : visits.slice(0, 10);
+  const displayedNotifs = showAllNotifs ? sortedNotifications : sortedNotifications.slice(0, 10);
 
   const handleOpenDetail = (v) => {
     setSelectedVisit(v);
     setIsDetailModalOpen(true);
   };
 
+  const hour = new Date().getHours();
+  const greeting = hour < 18 ? "Bonjour" : "Bonsoir";
+
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
-      <Toaster position="top-right" />
+    <div className="flex min-h-screen bg-[#F4F7F9] font-sans selection:bg-blue-200">
+      <Toaster position="top-right" toastOptions={{ className: 'rounded-2xl font-semibold text-sm' }} />
       
       <Sidebar 
         role="Visiteur" 
@@ -113,133 +191,226 @@ const VisiteurDashboard = () => {
         pendingVisits={pendingCount} 
       />
 
-      <main className={`flex-1 p-8 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        
-        <header className="mb-10 flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-black text-slate-800 tracking-tight">Mon Espace</h1>
-            <p className="text-slate-500 mt-1">Heureux de vous revoir, <span className="text-blue-600 font-bold">{userNom}</span>.</p>
+      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'} w-full flex flex-col`}>
+        <div className="bg-slate-900 px-8 pt-10 pb-20 relative overflow-hidden shrink-0">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">{greeting}, {userNom}</h1>
+                <Sparkles size={24} className="text-blue-400 animate-pulse" />
+              </div>
+              <p className="text-slate-400 text-sm md:text-base max-w-xl">
+                Bienvenue sur votre espace personnel. Gérez vos rendez-vous, suivez vos demandes et consultez vos notifications en temps réel.
+              </p>
+            </div>
+            
+            <button 
+              onClick={() => { setSelectedVisit(null); setIsModalOpen(true); }}
+              className="group relative bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-blue-600/40 flex items-center gap-3 transition-all duration-300 hover:-translate-y-1 active:scale-95 border border-blue-500 shrink-0"
+            >
+              <div className="bg-white/20 p-1.5 rounded-lg group-hover:rotate-90 transition-transform duration-300">
+                <Plus size={18} className="text-white" />
+              </div>
+              <span>Nouvelle Visite</span>
+            </button>
           </div>
-          <button 
-            onClick={() => { setSelectedVisit(null); setIsModalOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold shadow-lg flex items-center gap-2 transition-transform active:scale-95"
-          >
-            <Plus size={20} /> Nouvelle Visite
-          </button>
-        </header>
-
-        <div className="grid grid-cols-2 gap-6 mb-8">
-          <StatCard icon={<History size={32}/>} title="Total Visites" value={visits.length} color="text-blue-600" bgColor="bg-blue-50" />
-          <StatCard icon={<Clock size={32}/>} title="En Attente" value={pendingCount} color="text-amber-600" bgColor="bg-amber-50" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="px-8 -mt-10 relative z-20 pb-12 flex-1 flex flex-col">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 w-full">
+            <StatCard icon={<History size={28}/>} title="Total Visites" value={visits.length} color="text-blue-600" bgColor="bg-blue-50" />
+            <StatCard icon={<Clock size={28}/>} title="En Attente" value={pendingCount} color="text-amber-600" bgColor="bg-amber-50" />
+          </div>
 
-          {/* MES DEMANDES */}
-          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-800">Mes Demandes</h3>
-              <div className="flex items-center gap-3">
-                {visits.length > 10 && (
-                  <span className="text-xs text-slate-400 font-bold">10 / {visits.length}</span>
-                )}
-                <RefreshCw 
-                  size={18} 
-                  className={`text-slate-300 cursor-pointer ${loading ? 'animate-spin' : ''}`} 
-                  onClick={() => { loadData(); if(refreshNotifs) refreshNotifs(); }} 
-                />
-              </div>
-            </div>
-
-            <div className="divide-y divide-slate-50">
-              {loading ? (
-                <div className="p-10 text-center text-slate-400 italic">Chargement des visites...</div>
-              ) : recentVisits.length === 0 ? (
-                <div className="p-10 text-center text-slate-400">Aucune visite enregistrée.</div>
-              ) : recentVisits.map((v, index) => (
-                <div
-                  key={v.id || v.Id || index}
-                  className="p-6 hover:bg-slate-50/50 flex items-center justify-between group transition-all cursor-pointer"
-                  onClick={() => handleOpenDetail(v)}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
-                      <Calendar size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-slate-800 truncate">{v.motif || v.Motif || 'Visite standard'}</h4>
-                      <p className="text-xs text-slate-400">
-                        {(v.date || v.Date) ? new Date(v.date || v.Date).toLocaleDateString('fr-FR') : '--'} à {v.heureArriver || v.HeureArriver || '--:--'}
-                      </p>
-                    </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:h-[500px] w-full">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
+              <div className="p-6 md:p-8 border-b border-slate-50 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                    <Calendar size={18} className="text-blue-600" />
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter border ${getStatusColor(getStatusLabel(getEffectiveStatus(v)))}`}>
-                      {getStatusLabel(getEffectiveStatus(v))}
-                    </div>
-                    <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-all"/>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">Mes Demandes</h3>
+                    <p className="text-xs text-slate-400">Historique de vos rendez-vous</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+                <button onClick={() => { loadData(); if(refreshNotifs) refreshNotifs(); }} className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors group">
+                  <RefreshCw size={18} className={`text-slate-500 group-hover:text-blue-600 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+                </button>
+              </div>
 
-          {/* NOTIFICATIONS */}
-          <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex items-center gap-3">
-              <div className="p-2 bg-red-50 text-red-500 rounded-lg"><Bell size={20}/></div>
-              <h3 className="text-xl font-bold text-slate-800">Notifications</h3>
-            </div>
-            <div className="divide-y divide-slate-50">
-              {loadingNotifs ? (
-                <div className="p-10 text-center text-slate-400 italic">Mise à jour...</div>
-              ) : !notifications || notifications.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 italic">Aucune notification</div>
-              ) : (
-                notifications.slice(0, 10).map((n, index) => (
-                  <div key={n.id || index} className="p-6 hover:bg-slate-50/50 transition-all">
-                    <p className="text-sm font-semibold text-slate-700">{n.message || n.Message}</p>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase mt-1 block">
-                      {new Date(n.dateEnvoi || n.DateEnvoi).toLocaleString('fr-FR', {
-                        day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit'
-                      })}
-                    </span>
+              <div className="divide-y divide-slate-50 p-2 flex-1 overflow-y-auto">
+                {loading ? (
+                  <div className="flex items-center justify-center h-full p-12 text-slate-400 font-medium animate-pulse">Chargement de vos visites...</div>
+                ) : displayedVisits.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full p-12 text-slate-400 gap-3">
+                    <Calendar size={32} className="text-slate-200" />
+                    <p>Aucune visite enregistrée pour le moment.</p>
                   </div>
-                ))
+                ) : (
+                  <div>
+                    {displayedVisits.map((v, index) => {
+                      const effectiveStatus = getEffectiveStatus(v);
+                      return (
+                        <div key={v.id || v.Id || index} onClick={() => handleOpenDetail(v)}
+                          className="p-4 mx-4 my-2 rounded-2xl hover:bg-[#F8FAFC] flex items-center justify-between group transition-all duration-200 cursor-pointer border border-transparent hover:border-slate-100">
+                          <div className="flex items-center gap-5 overflow-hidden">
+                            <div className="w-12 h-12 bg-white shadow-sm border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:text-white transition-all duration-300 shrink-0">
+                              <Calendar size={20} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-slate-800 text-base truncate group-hover:text-blue-700 transition-colors">
+                                {v.motif || v.Motif || 'Visite standard'}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Clock size={12} className="text-slate-400 shrink-0" />
+                                <p className="text-xs text-slate-500 font-medium truncate">
+                                  {(v.date || v.Date) ? new Date(v.date || v.Date).toLocaleDateString('fr-FR') : '--'} à {v.heureArriver || v.HeureArriver || '--:--'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0 pl-4">
+                            {effectiveStatus === 2 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedBadgeVisit(v);
+                                }}
+                                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm shadow-blue-200"
+                                title="Afficher le Pass d'accès Numérique"
+                              >
+                                <QrCode size={14} />
+                                <span className="hidden sm:inline">Mon Pass</span>
+                              </button>
+                            )}
+
+                            {renderStatusBadge(effectiveStatus)}
+
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-white border border-slate-100 group-hover:bg-blue-100 group-hover:border-blue-200 transition-colors shrink-0 hidden sm:flex">
+                              <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-600"/>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {visits.length > 10 && (
+                <div className="p-4 border-t border-slate-50 bg-slate-50/50 shrink-0">
+                  <button 
+                    onClick={() => setShowAllVisits(!showAllVisits)}
+                    className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600 hover:bg-white rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-200"
+                  >
+                    {showAllVisits ? <><ChevronUp size={18} /> Réduire la liste</> : <><ChevronDown size={18} /> Voir tout l'historique ({visits.length})</>}
+                  </button>
+                </div>
               )}
             </div>
-          </div>
 
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
+              <div className="p-6 md:p-8 border-b border-slate-50 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-md">
+                      <Bell size={18} />
+                    </div>
+                    {sortedNotifications.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full"></span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">Activité</h3>
+                    <p className="text-xs text-slate-400">Vos alertes récentes</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="divide-y divide-slate-50 p-2 flex-1 overflow-y-auto">
+                {loadingNotifs ? (
+                  <div className="flex items-center justify-center h-full p-10 text-slate-400 text-sm">Mise à jour...</div>
+                ) : sortedNotifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full p-12 text-slate-400 gap-3">
+                    <CheckCircle2 size={32} className="text-emerald-200" />
+                    <p className="text-sm">Vous êtes à jour !</p>
+                  </div>
+                ) : (
+                  <div>
+                    {displayedNotifs.map((n, index) => (
+                      <div key={n.id || n.Id || index} className="p-4 mx-4 my-2 hover:bg-[#F8FAFC] rounded-2xl border border-transparent hover:border-slate-100 transition-colors group">
+                        <p className="text-sm font-semibold text-slate-700 leading-snug">
+                          {n.message || n.Message}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-2 flex items-center gap-1">
+                          <Clock size={10} />
+                          {(n.dateEnvoi || n.DateEnvoi) ? new Date(n.dateEnvoi || n.DateEnvoi).toLocaleString('fr-FR', {
+                            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                          }) : "Maintenant"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {(sortedNotifications.length > 10) && (
+                <div className="p-4 border-t border-slate-50 bg-slate-50/50 shrink-0">
+                  <button 
+                    onClick={() => setShowAllNotifs(!showAllNotifs)}
+                    className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600 hover:bg-white rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-200"
+                  >
+                    {showAllNotifs ? <><ChevronUp size={18} /> Masquer les anciennes</> : <><ChevronDown size={18} /> Voir toutes les notifications ({sortedNotifications.length})</>}
+                  </button>
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
 
         {isDetailModalOpen && (
-          <DetailVisitModal 
-            visit={selectedVisit} 
-            onClose={() => setIsDetailModalOpen(false)}
-            onReschedule={(v) => { setIsDetailModalOpen(false); navigate('/create-visit', { state: { initialData: v } }); }}
-          />
+          <DetailVisitModal visit={selectedVisit} onClose={() => setIsDetailModalOpen(false)} onReschedule={(v) => { setIsDetailModalOpen(false); navigate('/create-visit', { state: { initialData: v } }); }} />
         )}
 
         {isModalOpen && (
-          <CreateVisitModal 
-            isOpen={isModalOpen} 
-            onClose={() => setIsModalOpen(false)} 
-            onSuccess={() => { setIsModalOpen(false); loadData(); if(refreshNotifs) refreshNotifs(); }} 
-          />
+          <CreateVisitModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); loadData(); if(refreshNotifs) refreshNotifs(); }} />
         )}
+
+        {selectedBadgeVisit && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="relative w-full max-w-sm">
+              <button 
+                onClick={() => setSelectedBadgeVisit(null)}
+                className="absolute -top-10 right-0 text-white/80 hover:text-white font-bold text-xs bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700 transition-colors"
+              >
+                Fermer ✕
+              </button>
+              <DigitalBadge 
+                visit={selectedBadgeVisit} 
+                visitorName={userNom} 
+              />
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
 };
 
 const StatCard = ({ icon, title, value, color, bgColor }) => (
-  <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-4 h-32">
-    <div className={`w-14 h-14 ${bgColor} ${color} rounded-2xl flex items-center justify-center shrink-0`}>
+  <div className="bg-white w-full p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 transition-all hover:-translate-y-1 hover:shadow-lg duration-300">
+    <div className={`w-16 h-16 ${bgColor} ${color} rounded-2xl flex items-center justify-center shrink-0`}>
       {icon}
     </div>
     <div className="min-w-0">
-      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest truncate">{title}</p>
-      <h3 className="text-3xl font-black text-slate-800">{value}</h3>
+      <p className="text-slate-400 text-xs font-bold uppercase tracking-widest truncate mb-1">{title}</p>
+      <h3 className="text-4xl md:text-5xl font-black text-slate-800">{value}</h3>
     </div>
   </div>
 );

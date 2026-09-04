@@ -1,17 +1,11 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:5283/api/Notifications';
-
-// 🔥 Helper pour le token — comme dans visitService.js
-const getAuthHeader = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-});
+import { fetchWithAuth } from './apiClient';
 
 export const notificationService = {
   getByVisitor: async (visitorId) => {
     try {
-      const response = await axios.get(`${API_URL}/visitor/${visitorId}`, getAuthHeader());
-      return response.data.$values || response.data;
+      // 🟢 Chemin corrigé avec '/' au début pour éviter la collision avec l'URL de base
+      const data = await fetchWithAuth(`/api/Notifications/visitor/${visitorId}`);
+      return data?.$values || data;
     } catch (error) {
       console.error("Erreur notificationService (GetByVisitor):", error);
       throw error;
@@ -20,8 +14,9 @@ export const notificationService = {
 
   getAll: async () => {
     try {
-      const response = await axios.get(`${API_URL}/admin`, getAuthHeader()); // 🔥 token ajouté
-      return response.data?.$values || response.data?.value || response.data || [];
+      // 🟢 Chemin corrigé avec '/' au début
+      const data = await fetchWithAuth('/api/Notifications/admin');
+      return data?.$values || data?.value || data || [];
     } catch (error) {
       console.error("Erreur notificationService (GetAll):", error);
       throw error;
