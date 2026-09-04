@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { Bell, CheckCircle2, Clock, Calendar, AlertCircle } from 'lucide-react';
-import { fetchWithAuth, API_BASE_URL } from '../services/apiClient'; // 🟢 Import du client API et de l'URL de base
+import { fetchWithAuth } from './apiClient'; 
 
 const Notification = ({ userRole, userId }) => {
     const [notifications, setNotifications] = useState([]);

@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useServices } from '../hooks/useServices';
-import { fetchWithAuth } from '../services/apiClient'; // 🟢 Utilise ton client API centralisé
+import { fetchWithAuth } from '../services/apiClient'; 
 
 const schema = z.object({
   idVisitor: z.any().optional(),
