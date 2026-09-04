@@ -241,11 +241,21 @@ const Inscription = () => {
             alert("Modifications enregistrées avec succès !");
             navigate('/visitors');
         } else {
-            // ... création de compte classique
+            // 🟢 CRÉATION DE COMPTE CLASSIQUE (Inscription ou Admin)
+            await authService.Inscription(payload);
+            alert("Compte créé avec succès !");
+            
+            if (isConnected) {
+                // Si c'est un admin qui crée un utilisateur, on redirige vers la liste
+                navigate('/visitors');
+            } else {
+                // Sinon, on redirige vers la page de connexion
+                navigate('/login');
+            }
         }
     } catch (err) {
         console.error("Erreur lors de la soumission:", err);
-        alert(err.message || "Une erreur est survenue lors de la mise à jour.");
+        alert(err.message || "Une erreur est survenue lors de l'enregistrement.");
     }
 };
 

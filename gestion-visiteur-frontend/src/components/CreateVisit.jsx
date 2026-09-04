@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useServices } from '../hooks/useServices';
+import { fetchWithAuth } from '../services/apiClient'; // 🟢 Utilise ton client API centralisé
 
 const schema = z.object({
   idVisitor: z.any().optional(),
@@ -68,28 +69,18 @@ const CreateVisit = () => {
     if (!serviceId) return;
     setLoadingAgents(true);
     try {
-      const token = localStorage.getItem('token');
       const encodedService = encodeURIComponent(serviceId);
-      const response = await fetch(`http://localhost:5283/api/User/agents-by-service/${encodedService}`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // 🟢 Utilisation de fetchWithAuth pour cibler automatiquement Render
+      const data = await fetchWithAuth(`/api/User/agents-by-service/${encodedService}`);
 
-      if (response.ok) {
-        const data = await response.json();
-        const agents = data?.$values || data || [];
-        setServiceAgents(agents);
+      const agents = data?.$values || data || [];
+      setServiceAgents(agents);
 
-        if (targetUserId) {
-          const targetStr = String(targetUserId);
-          setTimeout(() => {
-            setValue('userId', targetStr);
-          }, 100);
-        }
-      } else {
-        setServiceAgents([]);
+      if (targetUserId) {
+        const targetStr = String(targetUserId);
+        setTimeout(() => {
+          setValue('userId', targetStr);
+        }, 100);
       }
     } catch (error) {
       console.error("Erreur lors du chargement des agents :", error);
@@ -133,21 +124,14 @@ const CreateVisit = () => {
 
         if (!hasHostId && visitId) {
           try {
-            const token = localStorage.getItem('token');
-            let res = await fetch(`http://localhost:5283/api/Visit/${visitId}`, {
-              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-            });
-            
-            if (!res.ok) {
-              res = await fetch(`http://localhost:5283/api/Visits/${visitId}`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-              });
+            // 🟢 Utilisation de fetchWithAuth avec gestion d'un fallback d'URL si besoin
+            let fetched = null;
+            try {
+              fetched = await fetchWithAuth(`/api/Visit/${visitId}`);
+            } catch {
+              fetched = await fetchWithAuth(`/api/Visits/${visitId}`);
             }
-
-            if (res.ok) {
-              const fetched = await res.json();
-              if (fetched) visitData = fetched;
-            }
+            if (fetched) visitData = fetched;
           } catch (err) {
             console.error("Erreur récupération visite :", err);
           }

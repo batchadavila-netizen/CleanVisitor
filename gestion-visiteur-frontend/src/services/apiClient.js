@@ -1,5 +1,5 @@
 // src/services/apiClient.js
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5283/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://cleanvisitor.onrender.com/api';
 
 export const fetchWithAuth = async (endpoint, options = {}) => {
   // 🟢 1. Gestion hybride du jeton (Clerk ou Local Storage pour l'Admin)

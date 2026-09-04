@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
-import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { fetchWithAuth } from '../services/apiClient'; // 🟢 Utilise ton client API centralisé
 
 const schema = z.object({
     newPassword: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
@@ -40,9 +40,16 @@ const ResetPasswordPage = () => {
 
     const onSubmit = async (data) => {
         try {
-            await axios.post('http://localhost:5283/api/auth/reset-password', {
-                email, token, newPassword: data.newPassword
+            // 🟢 Utilisation de fetchWithAuth pour cibler automatiquement Render en production
+            await fetchWithAuth('/api/auth/reset-password', {
+                method: 'POST',
+                body: JSON.stringify({
+                    email, 
+                    token, 
+                    newPassword: data.newPassword
+                }),
             });
+            
             toast.success("Mot de passe réinitialisé !");
             setTimeout(() => navigate('/login'), 2000);
         } catch {

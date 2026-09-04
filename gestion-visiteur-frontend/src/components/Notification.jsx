@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { Bell, CheckCircle2, Clock, Calendar, AlertCircle } from 'lucide-react';
+import { fetchWithAuth, API_BASE_URL } from '../services/apiClient'; // 🟢 Import du client API et de l'URL de base
 
 const Notification = ({ userRole, userId }) => {
     const [notifications, setNotifications] = useState([]);
@@ -12,13 +13,13 @@ const Notification = ({ userRole, userId }) => {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const url = (userRole === 'Admin' || userRole === '1')
-                    ? 'http://localhost:5283/api/Notifications/admin' 
-                    : `http://localhost:5283/api/Notifications/visitor/${userId}`;
+                const endpoint = (userRole === 'Admin' || userRole === '1')
+                    ? '/api/Notifications/admin' 
+                    : `/api/Notifications/visitor/${userId}`;
                 
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
+                // 🟢 Utilisation de fetchWithAuth pour cibler automatiquement Render en production
+                const data = await fetchWithAuth(endpoint);
+                if (data) {
                     setNotifications(data);
                     
                     // Gestion souple de la casse JSON (isRead ou IsRead)
@@ -34,9 +35,9 @@ const Notification = ({ userRole, userId }) => {
             fetchHistory();
         }
 
-        // Connexion SignalR (Temps réel)
+        // Connexion SignalR (Temps réel) basée sur l'URL dynamique de l'API
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("http://localhost:5283/notificationHub")
+            .withUrl(`${API_BASE_URL}/notificationHub`)
             .withAutomaticReconnect()
             .build();
 

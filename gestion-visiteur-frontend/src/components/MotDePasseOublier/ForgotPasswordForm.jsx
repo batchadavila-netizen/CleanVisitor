@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { fetchWithAuth } from '../services/apiClient'; // 🟢 Utilise ton client API centralisé
 
 const schema = z.object({
     email: z.string().email("Adresse email invalide"),
@@ -20,7 +20,12 @@ const ForgotPasswordForm = ({ onBack }) => {
 
     const onSubmit = async (data) => {
         try {
-            await axios.post('http://localhost:5283/api/auth/forgot-password', { email: data.email });
+            // 🟢 Utilisation de fetchWithAuth pour cibler automatiquement Render en production
+            await fetchWithAuth('/api/auth/forgot-password', {
+                method: 'POST',
+                body: JSON.stringify({ email: data.email }),
+            });
+            
             setSentEmail(data.email);
             setSent(true);
             toast.success("Email envoyé !");

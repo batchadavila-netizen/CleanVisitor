@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useServices } from '../hooks/useServices';
+import { fetchWithAuth } from '../services/apiClient'; // 🟢 Utilisation du client API centralisé
 
 const schema = z.object({
   date: z.string().min(1, "La date est obligatoire"),
@@ -68,22 +69,11 @@ const CreateVisitModal = ({ isOpen, onClose, onSuccess, initialData }) => {
     const fetchAgentsForService = async () => {
       setLoadingAgents(true);
       try {
-        const token = localStorage.getItem('token');
         const encodedService = encodeURIComponent(selectedService);
 
-        const response = await fetch(`http://localhost:5283/api/User/agents-by-service/${encodedService}`, {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setServiceAgents(data?.$values || data || []);
-        } else {
-          setServiceAgents([]);
-        }
+        // 🟢 Utilisation de fetchWithAuth pour cibler automatiquement l'URL de Render en production
+        const data = await fetchWithAuth(`/api/User/agents-by-service/${encodedService}`);
+        setServiceAgents(data?.$values || data || []);
       } catch (error) {
         console.error("Erreur récupération des agents :", error);
         setServiceAgents([]);
