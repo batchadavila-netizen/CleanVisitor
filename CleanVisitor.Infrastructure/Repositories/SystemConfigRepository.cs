@@ -3,28 +3,25 @@ using System.Text.Json;
 using CleanVisitor.Application.Features.SystemConfigs.Dtos;
 using CleanVisitor.Application.Features.SystemConfigs.Interfaces;
 using CleanVisitor.Core.Entities.SystemConfigs;
+using CleanVisitor.Infrastructure.Data;
 using Dapper;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 
 namespace CleanVisitor.Infrastructure.Repositories;
 
 public class SystemConfigRepository : ISystemConfigRepository
 {
-    private readonly string _connectionString;
+    private readonly DbContext _dbContext;
 
-    public SystemConfigRepository(IConfiguration configuration)
+    public SystemConfigRepository(DbContext dbContext)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
-            ?? throw new InvalidOperationException("Chaîne de connexion 'DefaultConnection' introuvable.");
+        _dbContext = dbContext;
     }
-
-    private IDbConnection CreateConnection() => new SqlConnection(_connectionString);
 
     public async Task<SystemConfigDto?> GetConfigAsync()
     {
-        using var connection = CreateConnection();
-        const string sql = @"
+        using IDbConnection connection = _dbContext.CreateConnection();
+
+        const string sqlSqlServer = @"
             SELECT company_name AS CompanyName, 
                    contact_email AS ContactEmail, 
                    pass_validity_hours AS PassValidityHours, 
@@ -34,6 +31,19 @@ public class SystemConfigRepository : ISystemConfigRepository
                    company_services_json AS CompanyServicesJson
             FROM system_configs 
             WHERE id = 1;";
+
+        const string sqlPostgres = @"
+            SELECT company_name AS ""CompanyName"", 
+                   contact_email AS ""ContactEmail"", 
+                   pass_validity_hours AS ""PassValidityHours"", 
+                   max_concurrent_visitors AS ""MaxConcurrentVisitors"", 
+                   auto_expire_hours AS ""AutoExpireHours"", 
+                   enable_email_notifs AS ""EnableEmailNotifs"", 
+                   company_services_json AS ""CompanyServicesJson""
+            FROM system_configs 
+            WHERE id = 1;";
+
+        string sql = _dbContext.SelectQuery(sqlSqlServer, sqlPostgres);
 
         var result = await connection.QueryFirstOrDefaultAsync<dynamic>(sql);
         if (result == null) return null;
@@ -45,21 +55,22 @@ public class SystemConfigRepository : ISystemConfigRepository
         {
             CompanyName = result.CompanyName,
             ContactEmail = result.ContactEmail,
-            PassValidityHours = (int)result.PassValidityHours,
-            MaxConcurrentVisitors = (int)result.MaxConcurrentVisitors,
-            AutoExpireHours = (int)result.AutoExpireHours,
-            EnableEmailNotifs = (bool)result.EnableEmailNotifs,
+            PassValidityHours = Convert.ToInt32(result.PassValidityHours),
+            MaxConcurrentVisitors = Convert.ToInt32(result.MaxConcurrentVisitors),
+            AutoExpireHours = Convert.ToInt32(result.AutoExpireHours),
+            EnableEmailNotifs = Convert.ToBoolean(result.EnableEmailNotifs),
             CompanyServices = services
         };
     }
 
     public async Task<SystemConfigDto> SaveConfigAsync(SystemConfigs config)
     {
-        using var connection = CreateConnection();
+        using IDbConnection connection = _dbContext.CreateConnection();
+
         string jsonServices = JsonSerializer.Serialize(config.CompanyServices);
 
-        // Requête compatible SQL Server (Upsert via MERGE)
-        const string sql = @"
+        // 1. Syntaxe Upsert SQL Server
+        const string sqlSqlServer = @"
             MERGE INTO system_configs WITH (HOLDLOCK) AS Target
             USING (SELECT 1 AS id) AS Source
             ON (Target.id = Source.id)
@@ -75,6 +86,21 @@ public class SystemConfigRepository : ISystemConfigRepository
             WHEN NOT MATCHED THEN
                 INSERT (id, company_name, contact_email, pass_validity_hours, max_concurrent_visitors, auto_expire_hours, enable_email_notifs, company_services_json)
                 VALUES (1, @CompanyName, @ContactEmail, @PassValidityHours, @MaxConcurrentVisitors, @AutoExpireHours, @EnableEmailNotifs, @CompanyServicesJson);";
+
+        // 2. Syntaxe Upsert PostgreSQL (Supabase)
+        const string sqlPostgres = @"
+            INSERT INTO system_configs (id, company_name, contact_email, pass_validity_hours, max_concurrent_visitors, auto_expire_hours, enable_email_notifs, company_services_json)
+            VALUES (1, @CompanyName, @ContactEmail, @PassValidityHours, @MaxConcurrentVisitors, @AutoExpireHours, @EnableEmailNotifs, @CompanyServicesJson)
+            ON CONFLICT (id) DO UPDATE SET
+                company_name = EXCLUDED.company_name,
+                contact_email = EXCLUDED.contact_email,
+                pass_validity_hours = EXCLUDED.pass_validity_hours,
+                max_concurrent_visitors = EXCLUDED.max_concurrent_visitors,
+                auto_expire_hours = EXCLUDED.auto_expire_hours,
+                enable_email_notifs = EXCLUDED.enable_email_notifs,
+                company_services_json = EXCLUDED.company_services_json;";
+
+        string sql = _dbContext.SelectQuery(sqlSqlServer, sqlPostgres);
 
         await connection.ExecuteAsync(sql, new
         {

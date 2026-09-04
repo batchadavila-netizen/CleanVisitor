@@ -10,15 +10,3 @@ C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Core/obj/Debug/net9
 C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/refint/CleanVisitor.Core.dll
 C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.pdb
 C:/Users/AIGLE INORMATIQUE/Desktop/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/ref/CleanVisitor.Core.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Core/bin/Debug/net9.0/CleanVisitor.Core.deps.json
-/home/tentchou/CleanVisitor/CleanVisitor.Core/bin/Debug/net9.0/CleanVisitor.Core.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Core/bin/Debug/net9.0/CleanVisitor.Core.pdb
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.GeneratedMSBuildEditorConfig.editorconfig
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.AssemblyInfoInputs.cache
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.AssemblyInfo.cs
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.csproj.CoreCompileInputs.cache
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.sourcelink.json
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/refint/CleanVisitor.Core.dll
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/CleanVisitor.Core.pdb
-/home/tentchou/CleanVisitor/CleanVisitor.Core/obj/Debug/net9.0/ref/CleanVisitor.Core.dll

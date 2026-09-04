@@ -14,12 +14,15 @@ public class CreateUserHandler:IRequestHandler<CreateUserCommand, UserDto>
         _repository=repository;
         _mapper=mapper;
     }
-    public async Task<UserDto>Handle(CreateUserCommand request, CancellationToken cancellationToken)
-    {
-        
-        var user=_mapper.Map<User>(request);
-         await _repository.AddAsync(user);
-         return _mapper.Map<UserDto>(user);
-         
-    }
+    public async Task<UserDto> Handle(CreateUserCommand request, CancellationToken cancellationToken)
+{
+    // 1. Mapping du Command vers l'entité User
+    var user = _mapper.Map<User>(request);
+
+    // 2. AddAsync retourne déjà le UserDto complet (avec l'ID généré par la BDD)
+    var userDto = await _repository.AddAsync(user);
+
+    // 3. Retourner directement le DTO renvoyé par le repository
+    return userDto;
+}
 }

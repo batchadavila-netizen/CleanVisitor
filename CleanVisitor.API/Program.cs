@@ -1,6 +1,9 @@
 using CleanVisitor.Infrastructure.Repositories;
 using FluentValidation;
 using System.Reflection;
+using CleanVisitor.Infrastructure.Data;
+using Npgsql;
+using System.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.IdentityModel.Tokens;
@@ -66,6 +69,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.AddScoped<DbContext>();
 
 // --- 3. AUTHENTIFICATION JWT (HYBRIDE : C# LOCAL + CLERK GOOGLE) ---
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -74,6 +78,10 @@ if (string.IsNullOrEmpty(jwtKey)) throw new Exception("Jwt:Key manquante dans ap
 // Récupération de l'Issuer Clerk depuis appsettings.json (avec fallback sur ton domaine exact)
 var clerkIssuer = builder.Configuration["Clerk:Issuer"] ?? "https://glad-collie-7683.clerk.accounts.dev";
 var localIssuer = builder.Configuration["Jwt:Issuer"] ?? "CleanVisitorApi";
+var supabaseConnectionString = builder.Configuration.GetConnectionString("SupabaseConnection") 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddScoped<IDbConnection>(sp => new NpgsqlConnection(supabaseConnectionString));
 
 builder.Services.AddAuthentication(options => {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
