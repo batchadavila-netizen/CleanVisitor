@@ -4,7 +4,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fetchWithAuth } from './services/apiClient';
+import { fetchWithAuth } from "../../services/apiClient";
 
 const schema = z.object({
     newPassword: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),

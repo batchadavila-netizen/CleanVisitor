@@ -3,7 +3,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fetchWithAuth } from './services/apiClient'; 
+import { fetchWithAuth } from "../../services/apiClient"; 
 
 const schema = z.object({
     email: z.string().email("Adresse email invalide"),
